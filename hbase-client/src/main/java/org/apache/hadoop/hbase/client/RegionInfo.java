@@ -493,6 +493,7 @@ public interface RegionInfo extends Comparable<RegionInfo> {
    * @param id        Region id (Usually timestamp from when region was created).
    * @param newFormat should we create the region name in the new format
    * @return Region name made of passed tableName, startKey, id and replicaId
+   * todo 创建region name
    */
   static byte[] createRegionName(final TableName tableName, final byte[] startKey, final byte[] id,
     final int replicaId, boolean newFormat) {

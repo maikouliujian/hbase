@@ -428,6 +428,7 @@ public class HTable implements Table {
       AsyncProcessTask.newBuilder().setPool(pool).setTableName(tableName).setRowAccess(actions)
         .setResults(results).setRpcTimeout(rpcTimeout).setOperationTimeout(operationTimeoutMs)
         .setSubmittedRows(AsyncProcessTask.SubmittedRows.ALL).build();
+    //todo 提交task
     AsyncRequestFuture ars = multiAp.submit(task);
     ars.waitUntilDone();
     if (ars.hasError()) {
@@ -513,6 +514,7 @@ public class HTable implements Table {
       this.operationTimeoutMs);
   }
 
+  //todo batch put的入口
   @Override
   public void put(final List<Put> puts) throws IOException {
     for (Put put : puts) {

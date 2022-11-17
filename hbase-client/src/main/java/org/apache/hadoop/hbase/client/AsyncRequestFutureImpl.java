@@ -413,6 +413,7 @@ class AsyncRequestFutureImpl<CResult> implements AsyncRequestFuture {
     boolean isReplica = false;
     List<Action> unknownReplicaActions = null;
     for (Action action : currentActions) {
+      //todo 找到region对应的location
       RegionLocations locs = findAllLocationsOrFail(action, true);
       if (locs == null) continue;
       boolean isReplicaAction = !RegionReplicaUtil.isDefaultReplica(action.getReplicaId());

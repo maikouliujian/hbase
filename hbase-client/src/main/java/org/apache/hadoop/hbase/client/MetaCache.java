@@ -44,6 +44,7 @@ public class MetaCache {
 
   private static final Logger LOG = LoggerFactory.getLogger(MetaCache.class);
 
+
   /**
    * Map of table to table {@link HRegionLocation}s.
    */
@@ -70,8 +71,9 @@ public class MetaCache {
    * @return Null or region location found in cache.
    */
   public RegionLocations getCachedLocation(final TableName tableName, final byte[] row) {
+    //todo 获取table的缓存
     ConcurrentNavigableMap<byte[], RegionLocations> tableLocations = getTableLocations(tableName);
-
+    //todo 获取row的rs缓存
     Entry<byte[], RegionLocations> e = tableLocations.floorEntry(row);
     if (e == null) {
       if (metrics != null) metrics.incrMetaCacheMiss();

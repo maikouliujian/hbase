@@ -381,6 +381,7 @@ class AsyncProcess {
     }
     AsyncRequestFutureImpl<CResult> ars =
       createAsyncRequestFuture(task, actions, ng.getNonceGroup());
+    //todo 触发请求
     ars.groupAndSendMultiAction(actions, 1);
     return ars;
   }

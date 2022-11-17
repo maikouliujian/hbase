@@ -142,6 +142,7 @@ import org.apache.hbase.thirdparty.com.google.common.base.Throwables;
  * leak out of it (through Result objects, etc)
  * </p>
  */
+
 @InterfaceAudience.Private
 public class MetaTableAccessor {
 

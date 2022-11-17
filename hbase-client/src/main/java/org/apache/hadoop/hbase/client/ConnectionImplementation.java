@@ -808,6 +808,7 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
     return locateRegion(tableName, row, useCache, retry, RegionReplicaUtil.DEFAULT_REPLICA_ID);
   }
 
+  //todo 获取region server的入口
   @Override
   public RegionLocations locateRegion(final TableName tableName, final byte[] row, boolean useCache,
     boolean retry, int replicaId) throws IOException {
@@ -858,6 +859,7 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
   }
 
   /**
+   * todo 获取region lacation的核心方法！！！
    * Search the hbase:meta table for the HRegionLocation info that contains the table and row we're
    * seeking.
    */
@@ -866,6 +868,7 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
     // If we are supposed to be using the cache, look in the cache to see if we already have the
     // region.
     if (useCache) {
+      //todo 获取client cache
       RegionLocations locations = getCachedLocation(tableName, row);
       if (locations != null && locations.getRegionLocation(replicaId) != null) {
         return locations;
