@@ -138,13 +138,26 @@ public class HMasterCommandLine extends ServerCommandLine {
       usage(null);
       return 1;
     }
-
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 这个 command 就是 main 方法的第一个参数：
+     *  hbase-daemon.sh start master
+     *  hbase-daemon.sh stop master
+     */
     String command = remainingArgs.get(0);
 
     if ("start".equals(command)) {
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： 启动 HMaster
+       */
       return startMaster();
     } else if ("stop".equals(command)) {
       if (shutDownCluster) {
+        /*************************************************
+         * TODO 马中华 https://blog.csdn.net/zhongqi2513
+         *  注释： 停止 Master
+         */
         return stopMaster();
       }
       System.err.println("To shutdown the master run "
@@ -167,6 +180,7 @@ public class HMasterCommandLine extends ServerCommandLine {
     try {
       // If 'local', defer to LocalHBaseCluster instance. Starts master
       // and regionserver both in the one JVM.
+      //todo 本地模式
       if (LocalHBaseCluster.isLocal(conf)) {
         DefaultMetricsSystem.setMiniClusterMode(true);
         final MiniZooKeeperCluster zooKeeperCluster = new MiniZooKeeperCluster(conf);
@@ -243,12 +257,14 @@ public class HMasterCommandLine extends ServerCommandLine {
         cluster.startup();
         waitOnMasterThreads(cluster);
       } else {
+        //todo 集群模式
         logProcessInfo(getConf());
         HMaster master = HMaster.constructMaster(masterClass, conf);
         if (master.isStopped()) {
           LOG.info("Won't bring the Master up as a shutdown is requested");
           return 1;
         }
+        //todo 启动hmaster
         master.start();
         master.join();
         if (master.isAborted()) throw new RuntimeException("HMaster Aborted");

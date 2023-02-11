@@ -754,12 +754,15 @@ public class ServerManager {
    * the 'hbase.master.wait.on.regionservers.timeout' is reached
    */
   public void waitForRegionServers(MonitoredTask status) throws InterruptedException {
+    // TODO 注释： 间隔时间和超时时间
     final long interval =
       this.master.getConfiguration().getLong(WAIT_ON_REGIONSERVERS_INTERVAL, 1500);
     final long timeout =
       this.master.getConfiguration().getLong(WAIT_ON_REGIONSERVERS_TIMEOUT, 4500);
     // Min is not an absolute; just a friction making us wait longer on server checkin.
+    // TODO 注释： 值为 1
     int minToStart = getMinToStart();
+    // TODO 注释： hbase.master.wait.on.regionservers.maxtostart
     int maxToStart =
       this.master.getConfiguration().getInt(WAIT_ON_REGIONSERVERS_MAXTOSTART, Integer.MAX_VALUE);
     if (maxToStart < minToStart) {
@@ -787,6 +790,17 @@ public class ServerManager {
     for (ServerListener listener : this.listeners) {
       listener.waiting();
     }
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释：
+     *  1、!this.master.isStopped()    HMaster 未关闭
+     *  2、!isClusterShutdown()  集群未关闭
+     *  3、count < maxToStart  启动了的 regionserver 个数小于 maxToStart
+     *  4、联合条件：只要有一个人满足，就是 true
+     *      (lastCountChange + interval) > now
+     *      timeout > slept
+     *      count < minToStart
+     */
     while (
       !this.master.isStopped() && !isClusterShutdown() && count < maxToStart
         && ((lastCountChange + interval) > now || timeout > slept || count < minToStart)

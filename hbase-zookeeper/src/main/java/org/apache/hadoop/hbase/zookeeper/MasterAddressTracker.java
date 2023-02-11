@@ -286,12 +286,19 @@ public class MasterAddressTracker extends ZKNodeTracker {
     // Build Set of backup masters from ZK nodes
     List<String> backupMasterStrings = null;
     try {
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： 获取 /hbase/backup-masters 节点下所有的子节点
+       */
       backupMasterStrings = ZKUtil.listChildrenAndWatchForNewChildren(zkw,
         zkw.getZNodePaths().backupMasterAddressesZNode);
     } catch (KeeperException e) {
       LOG.warn(zkw.prefix("Unable to list backup servers"), e);
     }
-
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 构建 ServerName 集合返回
+     */
     List<ServerName> backupMasters = Collections.emptyList();
     if (backupMasterStrings != null && !backupMasterStrings.isEmpty()) {
       backupMasters = new ArrayList<>(backupMasterStrings.size());
@@ -307,6 +314,7 @@ public class MasterAddressTracker extends ZKNodeTracker {
           if (bytes != null) {
             ServerName sn;
             try {
+              //todo pb解析
               sn = ProtobufUtil.parseServerNameFrom(bytes);
             } catch (DeserializationException e) {
               LOG.warn("Failed parse, skipping registering backup server", e);

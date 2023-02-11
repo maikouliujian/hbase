@@ -848,6 +848,8 @@ public class HRegionServer extends Thread
     // new masters or removing existing masters, since only clients' config needs to be updated.
     // - We need to retain ZKConnectionRegistry for replication use anyway, so we just extend it for
     // other internal connections too.
+    // TODO 注释： hbase.client.registry.impl
+    // TODO 注释： org.apache.hadoop.hbase.client.ZKConnectionRegistry
     conf.set(HConstants.CLIENT_CONNECTION_REGISTRY_IMPL_CONF_KEY,
       HConstants.ZK_CONNECTION_REGISTRY_CLASS);
     if (conf.get(HConstants.CLIENT_ZOOKEEPER_QUORUM) != null) {
@@ -859,6 +861,7 @@ public class HRegionServer extends Thread
     // Create a cluster connection that when appropriate, can short-circuit and go directly to the
     // local server if the request is to the local server bypassing RPC. Can be used for both local
     // and remote invocations.
+    // TODO 注释： ShortCircuitingClusterConnection
     return ServerConnectionUtils.createShortCircuitConnection(conf, null, userProvider.getCurrent(),
       serverName, rpcServices, rpcServices);
   }

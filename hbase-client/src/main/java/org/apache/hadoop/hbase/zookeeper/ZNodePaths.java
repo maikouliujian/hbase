@@ -89,31 +89,51 @@ public class ZNodePaths {
   // znode containing the state of the snapshot auto-cleanup
   final String snapshotCleanupZNode;
 
+  /*************************************************
+   * TODO 马中华 https://blog.csdn.net/zhongqi2513
+   *  注释： 规定了 HBase 在 ZK 上的各种 znode 节点的路径！
+   *  zookeeper.znode.parent = /hbase
+   */
   public ZNodePaths(Configuration conf) {
+    // TODO 注释： root 节点， 可以通过 zookeeper.znode.parent 去修改， 默认值： /hbase
     baseZNode = conf.get(ZOOKEEPER_ZNODE_PARENT, DEFAULT_ZOOKEEPER_ZNODE_PARENT);
+    // TODO 注释： meta-region-server
     metaZNodePrefix = conf.get(META_ZNODE_PREFIX_CONF_KEY, META_ZNODE_PREFIX);
+    // TODO 注释： zookeeper.znode.rs = rs， 完整路径： /hbase/rs
     rsZNode = joinZNode(baseZNode, conf.get("zookeeper.znode.rs", "rs"));
+    // TODO 注释： zookeeper.znode.draining.rs = draining， 完整路径： /hbase/draining
     drainingZNode = joinZNode(baseZNode, conf.get("zookeeper.znode.draining.rs", "draining"));
+    // TODO 注释： zookeeper.znode.master = master， 完整路径： /hbase/master
     masterAddressZNode = joinZNode(baseZNode, conf.get("zookeeper.znode.master", "master"));
-    backupMasterAddressesZNode =
-      joinZNode(baseZNode, conf.get("zookeeper.znode.backup.masters", "backup-masters"));
+    // TODO 注释： zookeeper.znode.backup.masters = backup-masters， 完整路径： /hbase/backup-masters
+    backupMasterAddressesZNode = joinZNode(baseZNode, conf.get("zookeeper.znode.backup.masters", "backup-masters"));
+    // TODO 注释： zookeeper.znode.state = running， 完整路径： /hbase/running
     clusterStateZNode = joinZNode(baseZNode, conf.get("zookeeper.znode.state", "running"));
+    // TODO 注释： zookeeper.znode.tableEnableDisable = table， 完整路径： /hbase/table
     tableZNode = joinZNode(baseZNode, conf.get("zookeeper.znode.tableEnableDisable", "table"));
+    // TODO 注释： zookeeper.znode.clusterId = hbaseid， 完整路径： /hbase/hbaseid
     clusterIdZNode = joinZNode(baseZNode, conf.get("zookeeper.znode.clusterId", "hbaseid"));
+    // TODO 注释： zookeeper.znode.splitlog = splitWAL， 完整路径： /hbase/splitWAL
     splitLogZNode = joinZNode(baseZNode, conf.get("zookeeper.znode.splitlog", SPLIT_LOGDIR_NAME));
+    // TODO 注释： zookeeper.znode.balancer = balancer， 完整路径： /hbase/balancer
     balancerZNode = joinZNode(baseZNode, conf.get("zookeeper.znode.balancer", "balancer"));
-    regionNormalizerZNode =
-      joinZNode(baseZNode, conf.get("zookeeper.znode.regionNormalizer", "normalizer"));
+    // TODO 注释： zookeeper.znode.regionNormalizer = normalizer， 完整路径： /hbase/normalizer
+    regionNormalizerZNode = joinZNode(baseZNode, conf.get("zookeeper.znode.regionNormalizer", "normalizer"));
+    // TODO 注释： zookeeper.znode.switch = switch， 完整路径： /hbase/switch
     switchZNode = joinZNode(baseZNode, conf.get("zookeeper.znode.switch", "switch"));
+    // TODO 注释： zookeeper.znode.namespace = namespace， 完整路径： /hbase/namespace
     namespaceZNode = joinZNode(baseZNode, conf.get("zookeeper.znode.namespace", "namespace"));
-    masterMaintZNode =
-      joinZNode(baseZNode, conf.get("zookeeper.znode.masterMaintenance", "master-maintenance"));
+    // TODO 注释： zookeeper.znode.masterMaintenance = master-maintenance， 完整路径： /hbase/master-maintenance
+    masterMaintZNode = joinZNode(baseZNode, conf.get("zookeeper.znode.masterMaintenance", "master-maintenance"));
+    // TODO 注释： zookeeper.znode.replication = replication， 完整路径： /hbase/replication
     replicationZNode = joinZNode(baseZNode, conf.get("zookeeper.znode.replication", "replication"));
-    peersZNode =
-      joinZNode(replicationZNode, conf.get("zookeeper.znode.replication.peers", "peers"));
+    // TODO 注释： zookeeper.znode.replication.peers = peers， 完整路径： /hbase/replication/peers
+    peersZNode = joinZNode(replicationZNode, conf.get("zookeeper.znode.replication.peers", "peers"));
+    // TODO 注释： zookeeper.znode.replication.rs = rs， 完整路径： /hbase/replication/rs
     queuesZNode = joinZNode(replicationZNode, conf.get("zookeeper.znode.replication.rs", "rs"));
-    hfileRefsZNode =
-      joinZNode(replicationZNode, conf.get("zookeeper.znode.replication.hfile.refs", "hfile-refs"));
+    // TODO 注释： zookeeper.znode.replication.hfile.ref = hfile-refs， 完整路径： /hbase/replication/hfile-refs
+    hfileRefsZNode = joinZNode(replicationZNode, conf.get("zookeeper.znode.replication.hfile.refs", "hfile-refs"));
+    // TODO 注释： zookeeper.znode.snapshot.cleanup = snapshot-cleanup， 完整路径： /hbase/snapshot-cleanup
     snapshotCleanupZNode = joinZNode(baseZNode,
       conf.get("zookeeper.znode.snapshot.cleanup", DEFAULT_SNAPSHOT_CLEANUP_ZNODE));
   }

@@ -132,6 +132,21 @@ public class ActiveMasterManager extends ZKListener {
   }
 
   private void updateBackupMasters() throws InterruptedIOException {
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释：
+     *  1、hbase 集群的 master 的 active 和 standby 的分配
+     *  2、在 zk 上，有两个znode 节点：
+     *      /hbase/master   这个 znode 存储是的是 active master 的信息
+     *      /hbase/backup-master   这个节点下的 子 znode 节点存储的是  backup-master 的信息
+     *  3、在 $HBASE_HOME/conf/backup-masters 这里面指定的就是 backup-master
+     *  所以只要 某个节点被指定在 backup-master 中，那么这个节点，刚启动的时候，一定是自动成为 standby
+     *  4、正常来说，是不用指定 active master 的节点是谁，
+     *  你通过 start-hbase.sh 启动集群的时候。这个 shelL 脚本在那个 节点启动，对应节点，就是 active  master
+     *  5、就算是 active  master ,启动的时候，也会到 /hbase/backup-master znode 下面创建一个子 znode 代表自己
+     *  然后再去 创建 /hbase/master znode 节点，修改 /hbase/master zonde 的数据。
+     *  如果成功了，则意味着，自己确实成为 active，那么再到 /hbase/backup-master 下把自己的那个 backup-master znode 给删掉！
+     */
     backupMasters =
       ImmutableList.copyOf(MasterAddressTracker.getBackupMastersAndRenewWatch(watcher));
   }
@@ -204,8 +219,15 @@ public class ActiveMasterManager extends ZKListener {
    * @param startupStatus the monitor status to track the progress
    * @return True if no issue becoming active master else false if another master was running or if
    *         some other problem (zookeeper, stop flag has been set on this Master)
+   *
+   *         * // TODO 注释：根据配置文件决定，是否自己是 backup 如果是 backup 则等待 90s
+   *      * // TODO 注释：所以active master 有 90 s 的时间，来确认自己是真正的 active
+   *      * // TODO 注释：     创建 /hbase/master 成功
+   *      * // TODO 注释： 只要 active master 宕机过一次，那么接下来两个 hmaster 就平等了
+   *      */
    */
   boolean blockUntilBecomingActiveMaster(int checkInterval, MonitoredTask startupStatus) {
+    // TODO 注释： 自己的 backup znode 路径
     String backupZNode = ZNodePaths
       .joinZNode(this.watcher.getZNodePaths().backupMasterAddressesZNode, this.sn.toString());
     while (!(master.isAborted() || master.isStopped())) {
@@ -213,27 +235,45 @@ public class ActiveMasterManager extends ZKListener {
       // Try to become the active master, watch if there is another master.
       // Write out our ServerName as versioned bytes.
       try {
+        /*************************************************
+         * TODO 马中华 https://blog.csdn.net/zhongqi2513
+         *  注释： 写 master 节点， 创建该节点，代表获取 分布式独占锁， 创建成功，意味着该节点有资格成为 active
+         *  就是在创建 /hbase/master 这个 znode 节点
+         */
         if (
           MasterAddressTracker.setMasterAddress(this.watcher,
             this.watcher.getZNodePaths().masterAddressZNode, this.sn, infoPort)
         ) {
-
+          // TODO 注释： 既然自己竞选成功了，那么就删除自己的 backup znode 节点
           // If we were a backup master before, delete our ZNode from the backup
           // master directory since we are the active now)
           if (ZKUtil.checkExists(this.watcher, backupZNode) != -1) {
             LOG.info("Deleting ZNode for " + backupZNode + " from backup master directory");
             ZKUtil.deleteNodeFailSilent(this.watcher, backupZNode);
           }
+          // TODO 注释： 然后将信息持久化到磁盘存储一份
+          // TODO 注释： 需要通过环境变量：HBASE_ZNODE_FILE 去设置
           // Save the znode in a file, this will allow to check if we crash in the launch scripts
           ZNodeClearer.writeMyEphemeralNodeOnDisk(this.sn.toString());
 
           // We are the master, return
           startupStatus.setStatus("Successfully registered as active master.");
+          /*************************************************
+           * TODO 马中华 https://blog.csdn.net/zhongqi2513
+           *  注释：
+           *  1、状态更新， 集群拥有了 active HMaster
+           *  2、active Master 就是自己
+           */
           this.clusterHasActiveMaster.set(true);
           activeMasterServerName = sn;
           LOG.info("Registered as active master=" + this.sn);
+          // TODO 注释： return true 表示竞选成功结束，则可以去启动 ActiveMasterManager 了
           return true;
         }
+        // TODO 注释： 如果当前节点是 active ，那么该方法执行到此结束，上述代码中有一个 return ture
+        // TODO 注释： 如果当前节点是 backup ，则if 中的代码是不会执行的。接下来执行后面的代码！
+        // TODO 注释： 上面的代码，是用来执行分布式选举，竞争 Active
+        // TODO 注释： 下面的代码，是自己没有竞争成为 Active 成功，则获取现在的 Active Master 并且注册监听等待重新选举
 
         // Invalidate the active master name so that subsequent requests do not get any stale
         // master information. Will be re-fetched if needed.
@@ -243,12 +283,21 @@ public class ActiveMasterManager extends ZKListener {
         this.clusterHasActiveMaster.set(true);
 
         String msg;
+        /*************************************************
+         * TODO 马中华 https://blog.csdn.net/zhongqi2513
+         *  注释： 由于 active HMaster 不是自己，则从 zk 上去获取 到底 谁是 active HMaster
+         *  获取 /hbase/master 这个 znode 上的数据
+         */
         byte[] bytes =
           ZKUtil.getDataAndWatch(this.watcher, this.watcher.getZNodePaths().masterAddressZNode);
         if (bytes == null) {
           msg = ("A master was detected, but went down before its address "
             + "could be read.  Attempting to become the next active master");
         } else {
+          /*************************************************
+           * TODO 马中华 https://blog.csdn.net/zhongqi2513
+           *  注释： 获取到 Active HMaster 的 ServerName 信息
+           */
           ServerName currentMaster;
           try {
             currentMaster = ProtobufUtil.parseServerNameFrom(bytes);
@@ -257,12 +306,17 @@ public class ActiveMasterManager extends ZKListener {
             // Hopefully next time around we won't fail the parse. Dangerous.
             continue;
           }
+          /*************************************************
+           * TODO 马中华 https://blog.csdn.net/zhongqi2513
+           *  注释： 如果 ServerName 是自己，则删除
+           *  这是异常情况！
+           */
           if (ServerName.isSameAddress(currentMaster, this.sn)) {
             msg = ("Current master has this master's address, " + currentMaster
               + "; master was restarted? Deleting node.");
             // Hurry along the expiration of the znode.
             ZKUtil.deleteNode(this.watcher, this.watcher.getZNodePaths().masterAddressZNode);
-
+            // TODO 注释： 把这个节点删除，就是促使重新选举！
             // We may have failed to delete the znode at the previous step, but
             // we delete the file anyway: a second attempt to delete the znode is likely to fail
             // again.

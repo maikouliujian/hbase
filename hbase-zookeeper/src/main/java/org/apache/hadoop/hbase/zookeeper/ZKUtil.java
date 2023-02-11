@@ -106,15 +106,22 @@ public final class ZKUtil {
     if (ensemble == null) {
       throw new IOException("Unable to determine ZooKeeper ensemble");
     }
+    // TODO 注释： 超时时间，90s
     int timeout = conf.getInt(HConstants.ZK_SESSION_TIMEOUT, HConstants.DEFAULT_ZK_SESSION_TIMEOUT);
     if (LOG.isTraceEnabled()) {
       LOG.trace("{} opening connection to ZooKeeper ensemble={}", identifier, ensemble);
     }
+    // TODO 注释： 重试次数： 3次
     int retry = conf.getInt("zookeeper.recovery.retry", 3);
+    // TODO 注释： 重试间隔时间： 1s
     int retryIntervalMillis = conf.getInt("zookeeper.recovery.retry.intervalmill", 1000);
     int maxSleepTime = conf.getInt("zookeeper.recovery.retry.maxsleeptime", 60000);
     zkDumpConnectionTimeOut = conf.getInt("zookeeper.dump.connection.timeout", 1000);
     int multiMaxSize = conf.getInt("zookeeper.multi.max.size", 1024 * 1024);
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 获取zk客户端实例
+     */
     return new RecoverableZooKeeper(ensemble, timeout, watcher, retry, retryIntervalMillis,
       maxSleepTime, identifier, multiMaxSize);
   }

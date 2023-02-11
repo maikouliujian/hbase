@@ -286,6 +286,10 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
     this.rpcControllerFactory = RpcControllerFactory.instantiate(conf);
     this.rpcCallerFactory = RpcRetryingCallerFactory.instantiate(conf, interceptor, this.stats);
     this.backoffPolicy = ClientBackoffPolicyFactory.create(conf);
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 异步处理器
+     */
     this.asyncProcess = new AsyncProcess(this, conf, rpcCallerFactory, rpcControllerFactory);
     if (conf.getBoolean(CLIENT_SIDE_METRICS_ENABLED_KEY, false)) {
       this.metrics =
@@ -293,6 +297,10 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
     } else {
       this.metrics = null;
     }
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： meta region location cache
+     */
     this.metaCache = new MetaCache(this.metrics);
 
     boolean shouldListen =
@@ -306,9 +314,20 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
     this.alternateBufferedMutatorClassName = this.conf.get(BufferedMutator.CLASSNAME_KEY);
 
     try {
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： 默认实现： ZKConnectionRegistry
+       *  基于zk的注册中心
+       */
       this.registry = ConnectionRegistryFactory.getRegistry(conf);
       retrieveClusterId();
-
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： 创建 Rpc 客户端， NettyRpcClient
+       *  HBase 的 RPC 技术实现： netty + protobuf 技术实现的
+       *  RPC 服务端： NettyRpcServer
+       *  RPC 客户端： NettyRpcClient
+       */
       this.rpcClient = RpcClientFactory.createClient(this.conf, this.clusterId, this.metrics);
 
       // Do we publish the status?

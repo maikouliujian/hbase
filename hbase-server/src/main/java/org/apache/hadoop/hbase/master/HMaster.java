@@ -419,6 +419,9 @@ public class HMaster extends HRegionServer implements MasterServices {
    * one.
    */
   public HMaster(final Configuration conf) throws IOException {
+    // TODO 注释： 首先要了解一个核心知识： HMaster 是 HRegionServer 的子类
+    // TODO 注释： 简而言之，HMaster 有很多和 HRegionServer 重叠的功能
+    //todo 第一件事
     super(conf);
     TraceUtil.initTracer(conf);
     try {
@@ -451,7 +454,7 @@ public class HMaster extends HRegionServer implements MasterServices {
 
       // preload table descriptor at startup
       this.preLoadTableDescriptors = conf.getBoolean("hbase.master.preload.tabledescriptors", true);
-
+      // TODO 注释： 默认 300s = 5min
       this.maxBalancingTime = getMaxBalancingTime();
       this.maxRitPercent = conf.getDouble(HConstants.HBASE_MASTER_BALANCER_MAX_RIT_PERCENT,
         HConstants.DEFAULT_HBASE_MASTER_BALANCER_MAX_RIT_PERCENT);
@@ -476,10 +479,35 @@ public class HMaster extends HRegionServer implements MasterServices {
           getChoreService().scheduleChore(clusterStatusPublisherChore);
         }
       }
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释：
+       *  1、hmaster 管理集群的所有从节点 hrs
+       *  2、hmaster 接收客户端的 DDL 请求处理
+       *  3、hmaster 管理了元数据表
+       *  4、hbase-2.x 版本的元数据表就只有 meta 一张表了
+       *  -
+       *  5、meta 的 region 是存储在 regionserver 之上的
+       *  6、meta 表的 region 位置是存储在 zk 上的
+       */
 
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释:  获取 meta 表的 region 位置，并且缓存起来
+       *  第二件事
+       */
       this.metaRegionLocationCache = new MetaRegionLocationCache(this.zooKeeper);
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： 创建 ActiveMasterManager 实例
+       *  第三件事
+       */
       this.activeMasterManager = createActiveMasterManager(zooKeeper, serverName, this);
-
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释：ClusterId
+       *  第四件事
+       */
       cachedClusterId = new CachedClusterId(this, conf);
     } catch (Throwable t) {
       // Make sure we log the exception. HMaster is often started via reflection and the
@@ -516,7 +544,16 @@ public class HMaster extends HRegionServer implements MasterServices {
       registerConfigurationObservers();
       Threads.setDaemonThreadRunning(new Thread(() -> {
         try {
+          /*************************************************
+           * TODO 马中华 https://blog.csdn.net/zhongqi2513
+           *  注释： 启动 基于 Jetty 实现的 HMaster WebServer
+           */
           int infoPort = putUpJettyServer();
+
+          /*************************************************
+           * TODO 马中华 https://blog.csdn.net/zhongqi2513
+           *  注释： 开启 ActiveMasterManager
+           */
           startActiveMasterManager(infoPort);
         } catch (Throwable t) {
           // Make sure we log the exception.
@@ -795,13 +832,22 @@ public class HMaster extends HRegionServer implements MasterServices {
      * We are active master now... go initialize components we need to run.
      */
     status.setStatus("Initializing Master file system");
-
+    // TODO 注释：记录成为 active 的时间
     this.masterActiveTime = System.currentTimeMillis();
     // TODO: Do this using Dependency Injection, using PicoContainer, Guice or Spring.
 
     // always initialize the MemStoreLAB as we use a region to store data in master now, see
     // localStore.
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 创建 MemStoreChunkCreator
+     *  为了提高内存利用，降低 full GC 带来的影响，启用了 MSLAB 技术
+     */
     initializeMemStoreChunkCreator();
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 文件系统管理器初始化
+     */
     this.fileSystemManager = new MasterFileSystem(conf);
     this.walManager = new MasterWalManager(this);
 
@@ -814,6 +860,7 @@ public class HMaster extends HRegionServer implements MasterServices {
     // Publish cluster ID; set it in Master too. The superclass RegionServer does this later but
     // only after it has checked in with the Master. At least a few tests ask Master for clusterId
     // before it has called its run method and before RegionServer has done the reportForDuty.
+    // TODO 注释： 从 HDFS 上读取 clusterID 然后存储到 ZK 上
     ClusterId clusterId = fileSystemManager.getClusterId();
     status.setStatus("Publishing Cluster ID " + clusterId + " in ZooKeeper");
     ZKClusterId.setClusterId(this.zooKeeper, fileSystemManager.getClusterId());
@@ -825,6 +872,10 @@ public class HMaster extends HRegionServer implements MasterServices {
     if (this.conf.getBoolean("hbase.write.hbck1.lock.file", true)) {
       Pair<Path, FSDataOutputStream> result = null;
       try {
+        /*************************************************
+         * TODO 马中华 https://blog.csdn.net/zhongqi2513
+         *  注释： 创建 /hbase/.tmp/hbase-hbck.lock 文件，并写入数据
+         */
         result = HBaseFsck.checkAndMarkRunningHbck(this.conf,
           HBaseFsck.createLockRetryCounterFactory(this.conf).create());
       } finally {
@@ -835,7 +886,12 @@ public class HMaster extends HRegionServer implements MasterServices {
     }
 
     status.setStatus("Initialize ServerManager and schedule SCP for crash servers");
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 初始化 zk 和 rpc 客户端
+     */
     this.serverManager = createServerManager(this);
+    // TODO 注释： WAL 日志分裂管理器
     if (
       !conf.getBoolean(HBASE_SPLIT_WAL_COORDINATED_BY_ZK, DEFAULT_HBASE_SPLIT_COORDINATED_BY_ZK)
     ) {
@@ -843,12 +899,21 @@ public class HMaster extends HRegionServer implements MasterServices {
     }
 
     // initialize master local region
+    // TODO 注释： 创建 master:store 表
     masterRegion = MasterRegionFactory.create(this);
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释：ProcedureExecutor 这个机制，很重要【***】。
+     */
     createProcedureExecutor();
     Map<Class<?>, List<Procedure<MasterProcedureEnv>>> procsByType = procedureExecutor
       .getActiveProceduresNoCopy().stream().collect(Collectors.groupingBy(p -> p.getClass()));
 
     // Create Assignment Manager
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： AssignmentManager region分配和负载均衡管理器，很重要【***】
+     */
     this.assignmentManager = createAssignmentManager(this);
     this.assignmentManager.start();
     // TODO: TRSP can perform as the sub procedure for other procedures, so even if it is marked as
@@ -865,6 +930,10 @@ public class HMaster extends HRegionServer implements MasterServices {
     // filesystem that COULD BE 'alive' (we'll schedule SCPs for each and let SCP figure it out).
     // We also pass dirs that are already 'splitting'... so we can do some checks down in tracker.
     // TODO: Generate the splitting and live Set in one pass instead of two as we currently do.
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 通过 zk 来追踪存活的 regionServer 服务器
+     */
     this.regionServerTracker = new RegionServerTracker(zooKeeper, this, this.serverManager);
     this.regionServerTracker.start(
       procsByType.getOrDefault(ServerCrashProcedure.class, Collections.emptyList()).stream()
@@ -879,8 +948,13 @@ public class HMaster extends HRegionServer implements MasterServices {
         : new TableStateManager(this);
 
     status.setStatus("Initializing ZK system trackers");
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 初始化一堆基于 zk 的各种追踪器
+     */
     initializeZKBasedSystemTrackers();
     // Set ourselves as active Master now our claim has succeeded up in zk.
+    // TODO 注释： 当前节点设置为 active HMaster
     this.activeMaster = true;
 
     // Start the Zombie master detector after setting master as active, see HBASE-21535
@@ -903,6 +977,7 @@ public class HMaster extends HRegionServer implements MasterServices {
     }
 
     // Checking if meta needs initializing.
+    // TODO 注释： 如果是 集群新部署，则初始化 meta 表
     status.setStatus("Initializing meta table if this is a new deploy");
     InitMetaProcedure initMetaProc = null;
     // Print out state of hbase:meta on startup; helps debugging.
@@ -910,6 +985,7 @@ public class HMaster extends HRegionServer implements MasterServices {
       Optional<InitMetaProcedure> optProc = procedureExecutor.getProcedures().stream()
         .filter(p -> p instanceof InitMetaProcedure).map(o -> (InitMetaProcedure) o).findAny();
       initMetaProc = optProc.orElseGet(() -> {
+        // TODO 注释：提交 InitMetaProcedure 开启 meta 初始化状态机
         // schedule an init meta procedure if meta has not been deployed yet
         InitMetaProcedure temp = new InitMetaProcedure();
         procedureExecutor.submitProcedure(temp);
@@ -927,6 +1003,13 @@ public class HMaster extends HRegionServer implements MasterServices {
 
     // start up all service threads.
     status.setStatus("Initializing master service threads");
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 开启各种服务线程
+     *  1、包括 ProcedureExecutor 中的 WorkerThread 线程
+     *  2、日志清理服务
+     *  3、hflie清理
+     */
     startServiceThreads();
     // wait meta to be initialized after we start procedure executor
     if (initMetaProc != null) {
@@ -934,7 +1017,10 @@ public class HMaster extends HRegionServer implements MasterServices {
     }
     // Wake up this server to check in
     sleeper.skipSleepCycle();
-
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 等待 RegionServer 上线
+     */
     // Wait for region servers to report in.
     // With this as part of master initialization, it precludes our being able to start a single
     // server that is both Master and RegionServer. Needs more thought. TODO.
@@ -955,6 +1041,10 @@ public class HMaster extends HRegionServer implements MasterServices {
     // as procedures run -- in particular SCPs for crashed servers... One should put up hbase:meta
     // if it is down. It may take a while to come online. So, wait here until meta if for sure
     // available. That's what waitForMetaOnline does.
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 等待 meta 表上线成功
+     */
     if (!waitForMetaOnline()) {
       return;
     }
@@ -963,7 +1053,7 @@ public class HMaster extends HRegionServer implements MasterServices {
       metaDescriptor.getColumnFamily(HConstants.TABLE_FAMILY);
     final ColumnFamilyDescriptor replBarrierFamilyDesc =
       metaDescriptor.getColumnFamily(HConstants.REPLICATION_BARRIER_FAMILY);
-
+    // TODO 注释： 加载 meta 表数据，完成 region 上线处理
     this.assignmentManager.joinCluster();
     // The below depends on hbase:meta being online.
     try {
@@ -976,7 +1066,10 @@ public class HMaster extends HRegionServer implements MasterServices {
         throw e;
       }
     }
-
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 处理 offline regions
+     */
     this.assignmentManager.processOfflineRegions();
     // this must be called after the above processOfflineRegions to prevent race
     this.assignmentManager.wakeMetaLoadedEvent();
@@ -1026,17 +1119,38 @@ public class HMaster extends HRegionServer implements MasterServices {
 
     // Start balancer and meta catalog janitor after meta and regions have been assigned.
     status.setStatus("Starting balancer and catalog janitor");
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 集群状态 服务
+     */
     this.clusterStatusChore = new ClusterStatusChore(this, balancer);
     getChoreService().scheduleChore(clusterStatusChore);
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 均衡器 服务
+     */
     this.balancerChore = new BalancerChore(this);
     if (!disableBalancerChoreForTest) {
       getChoreService().scheduleChore(balancerChore);
     }
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： RegionNormalizerManager 服务
+     */
     if (regionNormalizerManager != null) {
       getChoreService().scheduleChore(regionNormalizerManager.getRegionNormalizerChore());
     }
+
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释：CatalogJanitor 服务
+     */
     this.catalogJanitorChore = new CatalogJanitor(this);
     getChoreService().scheduleChore(catalogJanitorChore);
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： HbckChore 服务
+     */
     this.hbckChore = new HbckChore(this);
     getChoreService().scheduleChore(hbckChore);
 
@@ -1044,11 +1158,19 @@ public class HMaster extends HRegionServer implements MasterServices {
     // Here we expect hbase:namespace to be online. See inside initClusterSchemaService.
     // TODO: Fix this. Namespace is a pain being a sort-of system table. Fold it in to hbase:meta.
     // isNamespace does like isMeta and waits until namespace is onlined before allowing progress.
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 等待 namespace 上线
+     */
     if (!waitForNamespaceOnline()) {
       return;
     }
     status.setStatus("Starting cluster schema service");
     try {
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释：ClusterSchemaService 初始化， 具体实现是： ClusterSchemaServiceImpl
+       */
       initClusterSchemaService();
     } catch (IllegalStateException e) {
       if (
@@ -1109,7 +1231,10 @@ public class HMaster extends HRegionServer implements MasterServices {
       LOG.info("Detected repair mode, skipping final initialization steps.");
       return;
     }
-
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 检查是否需要进行 region 移动操作
+     */
     assignmentManager.checkIfShouldMoveSystemRegionAsync();
     status.setStatus("Starting quota manager");
     initQuotaManager();
@@ -1305,6 +1430,12 @@ public class HMaster extends HRegionServer implements MasterServices {
   protected ServerManager createServerManager(final MasterServices master) throws IOException {
     // We put this out here in a method so can do a Mockito.spy and stub it out
     // w/ a mocked up ServerManager.
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 初始化集群链接
+     *  1、启动 zk 客户端
+     *  2、启动 rpc 客户端
+     */
     setupClusterConnection();
     return new ServerManager(master);
   }
@@ -1414,11 +1545,19 @@ public class HMaster extends HRegionServer implements MasterServices {
     // Any time changing this maxThreads to > 1, pls see the comment at
     // AccessController#postCompletedCreateTableAction
     this.executorService.startExecutorService(ExecutorType.MASTER_TABLE_OPERATIONS, 1);
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释：ProcedureExecutor 启动
+     */
     startProcedureExecutor();
 
     // Create cleaner thread pool
     cleanerPool = new DirScanPool(conf);
     // Start log cleaner thread
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： Log 清理服务
+     */
     int cleanerInterval =
       conf.getInt(HBASE_MASTER_CLEANER_INTERVAL, DEFAULT_HBASE_MASTER_CLEANER_INTERVAL);
     this.logCleaner = new LogCleaner(cleanerInterval, this, conf,
@@ -1429,6 +1568,10 @@ public class HMaster extends HRegionServer implements MasterServices {
     Path archiveDir = HFileArchiveUtil.getArchivePath(conf);
     Map<String, Object> params = new HashMap<>();
     params.put(MASTER, this);
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： HFile 清理服务
+     */
     this.hfileCleaner = new HFileCleaner(cleanerInterval, this, conf,
       getMasterFileSystem().getFileSystem(), archiveDir, cleanerPool, params);
     getChoreService().scheduleChore(hfileCleaner);
@@ -1448,11 +1591,17 @@ public class HMaster extends HRegionServer implements MasterServices {
     }
 
     this.regionsRecoveryConfigManager = new RegionsRecoveryConfigManager(this);
-
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： ReplicationBarrierCleaner 服务
+     */
     replicationBarrierCleaner =
       new ReplicationBarrierCleaner(conf, this, getConnection(), replicationPeerManager);
     getChoreService().scheduleChore(replicationBarrierCleaner);
-
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： SnapshotCleanerChore 服务
+     */
     final boolean isSnapshotChoreEnabled = this.snapshotCleanupTracker.isSnapshotCleanupEnabled();
     this.snapshotCleanerChore = new SnapshotCleanerChore(this, conf, getSnapshotManager());
     if (isSnapshotChoreEnabled) {
@@ -2135,6 +2284,8 @@ public class HMaster extends HRegionServer implements MasterServices {
   }
 
   private void startActiveMasterManager(int infoPort) throws KeeperException {
+    // TODO 注释： 构建自己的 backup znode 节点 路径
+    // TODO 注释： /hbase/backup-master/bigdata02
     String backupZNode = ZNodePaths.joinZNode(zooKeeper.getZNodePaths().backupMasterAddressesZNode,
       serverName.toString());
     /*
@@ -2145,11 +2296,18 @@ public class HMaster extends HRegionServer implements MasterServices {
      * delete this node for us since it is ephemeral.
      */
     LOG.info("Adding backup master ZNode " + backupZNode);
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 先自动成为 standby Master，注册写 对应的 znode 节点
+     *  /hbase/backup-master/bigdata02 = backupZNode
+     */
     if (!MasterAddressTracker.setMasterAddress(zooKeeper, backupZNode, serverName, infoPort)) {
       LOG.warn("Failed create of " + backupZNode + " by " + serverName);
     }
     this.activeMasterManager.setInfoPort(infoPort);
     int timeout = conf.getInt(HConstants.ZK_SESSION_TIMEOUT, HConstants.DEFAULT_ZK_SESSION_TIMEOUT);
+    // TODO 注释： hbase.master.backup 默认为 false，就表示当前为 active
+    // TODO 注释： 当这个参数，为false，表示该节点为 backup，则一直阻塞在这儿，直到有 active HMaster
     // If we're a backup master, stall until a primary to write this address
     if (conf.getBoolean(HConstants.MASTER_TYPE_BACKUP, HConstants.DEFAULT_MASTER_TYPE_BACKUP)) {
       LOG.debug("HMaster started in backup mode. Stalling until master znode is written.");
@@ -2163,7 +2321,18 @@ public class HMaster extends HRegionServer implements MasterServices {
     MonitoredTask status = TaskMonitor.get().createStatus("Master startup");
     status.setDescription("Master startup");
     try {
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： 竞争 Active
+       *  1、如果执行这个方法的 master 是 backup 则卡在内部了，这个方法迟迟没有返回的
+       *  2、当前节点成为 active master，则这个方法返回 true
+       *  那么就完成成为 active 之后的各种基础服务的启动
+       */
       if (activeMasterManager.blockUntilBecomingActiveMaster(timeout, status)) {
+        /*************************************************
+         * TODO 马中华 https://blog.csdn.net/zhongqi2513
+         *  注释： 启动 Active Master 的服务
+         */
         finishActiveMasterInitialization(status);
       }
     } catch (Throwable t) {
@@ -2932,6 +3101,10 @@ public class HMaster extends HRegionServer implements MasterServices {
   public static void main(String[] args) {
     LOG.info("STARTING service " + HMaster.class.getSimpleName());
     VersionInfo.logVersion();
+    /*************************************************
+     * TODO_MA 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 最终跳转到 HMasterCommandLine.run()
+     */
     new HMasterCommandLine(HMaster.class).doMain(args);
   }
 

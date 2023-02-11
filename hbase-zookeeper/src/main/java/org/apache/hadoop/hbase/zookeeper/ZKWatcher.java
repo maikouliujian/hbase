@@ -173,12 +173,24 @@ public class ZKWatcher implements Watcher, Abortable, Closeable {
     // handle the syncconnect event.
     this.identifier = identifier + "0x0";
     this.abortable = abortable;
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 各种 znode 节点路径
+     */
     this.znodePaths = new ZNodePaths(conf);
     PendingWatcher pendingWatcher = new PendingWatcher();
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释：建立和 ZK 的链接
+     */
     this.recoverableZooKeeper = ZKUtil.connect(conf, quorum, pendingWatcher, identifier);
     pendingWatcher.prepare(this);
     if (canCreateBaseZNode) {
       try {
+        /*************************************************
+         * TODO 马中华 https://blog.csdn.net/zhongqi2513
+         *  注释： 创建 HBase 在 ZK 上的一些基础 znode 节点
+         */
         createBaseZNodes();
       } catch (ZooKeeperConnectionException zce) {
         try {
@@ -456,8 +468,14 @@ public class ZKWatcher implements Watcher, Abortable, Closeable {
    * for subsequent CREATE/DELETE operations on child nodes.
    */
   public List<String> getMetaReplicaNodesAndWatchChildren() throws KeeperException {
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： childrenOfBaseNode 存储的就是： /hbase 所有的子节点
+     *  meta 表有多个region，则生成相应数量的znode存储在zk上
+     */
     List<String> childrenOfBaseNode =
       ZKUtil.listChildrenAndWatchForNewChildren(this, znodePaths.baseZNode);
+    // TODO 注释： 从 childrenOfBaseNode 集合中，找出所有 meta-region-server 开头的节点
     return filterMetaReplicaNodes(childrenOfBaseNode);
   }
 

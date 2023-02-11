@@ -81,7 +81,9 @@ public class MetaRegionLocationCache extends ZKListener {
 
   public MetaRegionLocationCache(ZKWatcher zkWatcher) {
     super(zkWatcher);
+    // TODO 注释： meta region locations 缓存数据
     cachedMetaLocations = new CopyOnWriteArrayMap<>();
+    // TODO 注释： 注册监听
     watcher.registerListener(this);
     // Populate the initial snapshot of data from meta znodes.
     // This is needed because stand-by masters can potentially start after the initial znode
@@ -91,6 +93,10 @@ public class MetaRegionLocationCache extends ZKListener {
     ThreadFactory threadFactory = new ThreadFactoryBuilder().setDaemon(true).build();
     RetryCounterFactory retryFactory = new RetryCounterFactory(Integer.MAX_VALUE,
       SLEEP_INTERVAL_MS_BETWEEN_RETRIES, SLEEP_INTERVAL_MS_MAX);
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 开始定位 Meta Location
+     */
     threadFactory.newThread(() -> loadMetaLocationsFromZk(retryFactory.create(), ZNodeOpType.INIT))
       .start();
   }
@@ -102,8 +108,13 @@ public class MetaRegionLocationCache extends ZKListener {
    */
   private void loadMetaLocationsFromZk(RetryCounter retryCounter, ZNodeOpType opType) {
     List<String> znodes = null;
+    // TODO 注释： 带重试
     while (retryCounter.shouldRetry()) {
       try {
+        /*************************************************
+         * TODO 马中华 https://blog.csdn.net/zhongqi2513
+         *  注释：从 ZK 上获取 /hbase/meta-region-server znode 的数据
+         */
         znodes = watcher.getMetaReplicaNodesAndWatchChildren();
         break;
       } catch (KeeperException ke) {
@@ -115,6 +126,7 @@ public class MetaRegionLocationCache extends ZKListener {
           return;
         }
         try {
+          // TODO 注释： 睡眠一段时间，等待重试
           retryCounter.sleepUntilNextRetry();
         } catch (InterruptedException ie) {
           LOG.error("Interrupted while loading meta locations from ZK", ie);
@@ -132,8 +144,14 @@ public class MetaRegionLocationCache extends ZKListener {
       // No new meta znodes got added.
       return;
     }
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释：
+     */
     for (String znode : znodes) {
+      // TODO 注释： 拼装得到完整路径  /hbase/meta-region-server-replicaID
       String path = ZNodePaths.joinZNode(watcher.getZNodePaths().baseZNode, znode);
+      // TODO 注释： 加入缓存
       updateMetaLocation(path, opType);
     }
   }
@@ -162,12 +180,17 @@ public class MetaRegionLocationCache extends ZKListener {
       return;
     }
     LOG.debug("Updating meta znode for path {}: {}", path, opType.name());
+    // TODO 注释： 获取 meta replica 的 ID
     int replicaId = watcher.getZNodePaths().getMetaReplicaIdFromPath(path);
     RetryCounter retryCounter = retryCounterFactory.create();
     HRegionLocation location = null;
     while (retryCounter.shouldRetry()) {
       try {
         if (opType == ZNodeOpType.DELETED) {
+          /*************************************************
+           * TODO 马中华 https://blog.csdn.net/zhongqi2513
+           *  注释：监听
+           */
           if (!ZKUtil.watchAndCheckExists(watcher, path)) {
             // The path does not exist, we've set the watcher and we can break for now.
             break;

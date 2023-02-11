@@ -101,6 +101,10 @@ public class RecoverableZooKeeper {
     this.maxMultiSize = maxMultiSize;
 
     try {
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： 获取 ZK 客户端实例
+       */
       checkZk();
     } catch (Exception x) {
       /* ignore */

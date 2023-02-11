@@ -137,6 +137,10 @@ public abstract class ServerCommandLine extends Configured implements Tool {
    */
   public void doMain(String args[]) {
     try {
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： 执行 this 的 run()
+       */
       int ret = ToolRunner.run(HBaseConfiguration.create(), this, args);
       if (ret != 0) {
         System.exit(ret);
