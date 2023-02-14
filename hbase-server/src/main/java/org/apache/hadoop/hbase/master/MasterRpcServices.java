@@ -575,6 +575,7 @@ public class MasterRpcServices extends RSRpcServices implements MasterService.Bl
     // Register with server manager
     try {
       master.checkServiceStarted();
+      // TODO 注释： 获取版本号
       int versionNumber = 0;
       String version = "0.0.0";
       VersionInfo versionInfo = VersionInfoUtil.getCurrentClientVersionInfo();
@@ -582,18 +583,28 @@ public class MasterRpcServices extends RSRpcServices implements MasterService.Bl
         version = versionInfo.getVersion();
         versionNumber = VersionInfoUtil.getVersionNumber(versionInfo);
       }
+      // TODO 注释： 获取地址
       InetAddress ia = master.getRemoteInetAddress(request.getPort(), request.getServerStartCode());
       // if regionserver passed hostname to use,
       // then use it instead of doing a reverse DNS lookup
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： HMaster 处理 HRegionServer 的上线汇报
+       */
       ServerName rs =
         master.getServerManager().regionServerStartup(request, versionNumber, version, ia);
 
       // Send back some config info
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： 返回响应
+       */
       RegionServerStartupResponse.Builder resp = createConfigurationSubset();
+      // TODO 注释： reponse 写回一个响应：hbase.regionserver.hostname.seen.by.master = hostname
       NameStringPair.Builder entry = NameStringPair.newBuilder()
         .setName(HConstants.KEY_FOR_HOSTNAME_SEEN_BY_MASTER).setValue(rs.getHostname());
       resp.addMapEntries(entry.build());
-
+      // TODO 注释： 构建响应，返回
       return resp.build();
     } catch (IOException ioe) {
       throw new ServiceException(ioe);

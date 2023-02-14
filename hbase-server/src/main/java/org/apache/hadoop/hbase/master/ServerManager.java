@@ -197,6 +197,7 @@ public class ServerManager {
     ServerName sn = ServerName.valueOf(hostname, request.getPort(), request.getServerStartCode());
     checkClockSkew(sn, request.getServerCurrentTime());
     checkIsDead(sn, "STARTUP");
+    //todo
     if (!checkAndRecordNewServer(sn, ServerMetricsBuilder.of(sn, versionNumber, version))) {
       LOG.warn(
         "THIS SHOULD NOT HAPPEN, RegionServerStartup" + " could not record the server: " + sn);
@@ -270,12 +271,18 @@ public class ServerManager {
   boolean checkAndRecordNewServer(final ServerName serverName, final ServerMetrics sl) {
     ServerName existingServer = null;
     synchronized (this.onlineServers) {
+      // TODO 注释： 先判断是否存在了
       existingServer = findServerWithSameHostnamePortWithLock(serverName);
+      // TODO 注释： 已经注册过
       if (existingServer != null && (existingServer.getStartcode() > serverName.getStartcode())) {
         LOG.info("Server serverName=" + serverName + " rejected; we already have "
           + existingServer.toString() + " registered with same hostname and port");
         return false;
       }
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： 完成注册
+       */
       recordNewServerWithLock(serverName, sl);
     }
 
@@ -293,6 +300,7 @@ public class ServerManager {
         + " looks stale, new server:" + serverName);
       expireServer(existingServer);
     }
+    // TODO 注释： 注册成功
     return true;
   }
 

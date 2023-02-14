@@ -636,6 +636,8 @@ public class HRegionServer extends Thread
       Superusers.initialize(conf);
       regionServerAccounting = new RegionServerAccounting(conf);
 
+      // TODO 注释： 如果是 HMaster 并且不携带表的话，则不用初始化 BlockCache 和 MobFileCache
+      // TODO 注释： 如果是 HRegionServer，则初始化 BlockCache 和 MobFileCache
       boolean isMasterNotCarryTable =
         this instanceof HMaster && !LoadBalancer.isTablesOnMaster(conf);
 
@@ -760,8 +762,13 @@ public class HRegionServer extends Thread
     if (walDirUri != null) {
       CommonFSUtils.setFsDefault(this.conf, walDirUri);
     }
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 用于将日志存储在 HDFS 的 客户端实例
+     */
     // init the WALFs
     this.walFs = new HFileSystem(this.conf, useHBaseChecksum);
+    // TODO 注释： 日志根目录
     this.walRootDir = CommonFSUtils.getWALRootDir(this.conf);
     // Set 'fs.defaultFS' to match the filesystem on hbase.rootdir else
     // underlying hadoop hdfs accessors will be going against wrong filesystem
@@ -772,8 +779,16 @@ public class HRegionServer extends Thread
       CommonFSUtils.setFsDefault(this.conf, rootDirUri);
     }
     // init the filesystem
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 用于将 HFile 存储在 HDFS 的客户端实例
+     */
     this.dataFs = new HFileSystem(this.conf, useHBaseChecksum);
     this.dataRootDir = CommonFSUtils.getRootDir(this.conf);
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释：
+     */
     this.tableDescriptors = new FSTableDescriptors(this.dataFs, this.dataRootDir,
       !canUpdateTableDescriptor(), cacheTableDescriptor());
   }
@@ -901,9 +916,23 @@ public class HRegionServer extends Thread
    */
   private void preRegistrationInitialization() {
     try {
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： 从 zk 中获取一些 基本数据
+       */
       initializeZooKeeper();
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： 创建链接对象： ShortCircuitingClusterConnection
+       *  真正创建的是： ConnectionImplementation
+       */
       setupClusterConnection();
       // Setup RPC client for master communication
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释：启动一个用来和 Master 联系的 RpcClient 客户端
+       *  真正实现，是 NettyRpcClient
+       */
       this.rpcClient = RpcClientFactory.createClient(conf, clusterId,
         new InetSocketAddress(this.rpcServices.isa.getAddress(), 0),
         clusterConnection.getConnectionMetrics());
@@ -1002,6 +1031,11 @@ public class HRegionServer extends Thread
       return;
     }
     try {
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： 必要的一些初始化
+       *  启动第一件大事： 初始化一些基础的服务
+       */
       // Do pre-registration initializations; zookeeper, lease threads, etc.
       preRegistrationInitialization();
     } catch (Throwable e) {
@@ -1020,16 +1054,30 @@ public class HRegionServer extends Thread
         // start up all Services. Use RetryCounter to get backoff in case Master is struggling to
         // come up.
         LOG.debug("About to register with Master.");
+        /*************************************************
+         * TODO 马中华 https://blog.csdn.net/zhongqi2513
+         *  注释： 重试 计数器
+         */
         RetryCounterFactory rcf =
           new RetryCounterFactory(Integer.MAX_VALUE, this.sleeper.getPeriod(), 1000 * 60 * 5);
         RetryCounter rc = rcf.create();
+
+        /*************************************************
+         * TODO 马中华 https://blog.csdn.net/zhongqi2513
+         *  注释：HRegionServer 上线汇报
+         *  启动第二件大事： 调用 reportForDuty 方法来执行 RS 向 HMaster 的注册
+         */
         while (keepLooping()) {
+          // TODO 注释： 发送汇报
+          // TODO 注释： 注册的时候，只是把当前节点的 ServerName 没有其他信息
           RegionServerStartupResponse w = reportForDuty();
           if (w == null) {
             long sleepTime = rc.getBackoffTimeAndIncrementAttempts();
             LOG.warn("reportForDuty failed; sleeping {} ms and then retrying.", sleepTime);
             this.sleeper.sleep(sleepTime);
           } else {
+            // TODO 注释： 处理反馈
+            // TODO 启动第三件大事： 处理汇报/注册反馈！
             handleReportForDutyResponse(w);
             break;
           }
@@ -1055,6 +1103,7 @@ public class HRegionServer extends Thread
       long lastMsg = System.currentTimeMillis();
       long oldRequestCount = -1;
       // The main run loop.
+      //todo 四维持心跳
       while (!isStopped() && isHealthy()) {
         if (!isClusterUp()) {
           if (onlineRegions.isEmpty()) {
@@ -1083,8 +1132,13 @@ public class HRegionServer extends Thread
             LOG.debug("Waiting on " + getOnlineRegionsAsPrintableString());
           }
         }
+        /*************************************************
+         * TODO 马中华 https://blog.csdn.net/zhongqi2513
+         *  注释： 心跳， 默认时间 msgInterval = 3s
+         */
         long now = System.currentTimeMillis();
         if ((now - lastMsg) >= msgInterval) {
+          //todo 发送心跳请求
           tryRegionServerReport(lastMsg, now);
           lastMsg = System.currentTimeMillis();
         }
@@ -1252,6 +1306,11 @@ public class HRegionServer extends Thread
     return writeCount;
   }
 
+  /*************************************************
+   * TODO 马中华 https://blog.csdn.net/zhongqi2513
+   *  注释： 由于这是心跳（常规作用： 验活） HRegioinServer 和 HMaster 之间的验活是怎么做的？ 是通过 zk 做的
+   *  但是在 HBase 中，心跳不是用来验活的是： 是 region 负载汇报的
+   */
   @InterfaceAudience.Private
   protected void tryRegionServerReport(long reportStartTime, long reportEndTime)
     throws IOException {
@@ -1260,11 +1319,23 @@ public class HRegionServer extends Thread
       // the current server could be stopping.
       return;
     }
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 第一步：获取 RS 上的 负载，包括 region 的负载
+     *  构建 RegionServer 的负载
+     */
     ClusterStatusProtos.ServerLoad sl = buildServerLoad(reportStartTime, reportEndTime);
     try {
+      // TODO 注释： 第二件事
+      // TODO 注释： 注册信息包含了两个方面的东西： ServerLoad 和 ServerName
       RegionServerReportRequest.Builder request = RegionServerReportRequest.newBuilder();
       request.setServer(ProtobufUtil.toServerName(this.serverName));
       request.setLoad(sl);
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： 第三件事：发送 RS 的负载信息给 HMaster
+       *  HRegionServer report
+       */
       rss.regionServerReport(null, request.build());
     } catch (ServiceException se) {
       IOException ioe = ProtobufUtil.getRemoteException(se);
@@ -1597,8 +1668,15 @@ public class HRegionServer extends Thread
         this.conf.set(key, value);
       }
       // Set our ephemeral znode up in zookeeper now we have a name.
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： 在 /hbase/rs 节点下，创建代表自己上线的 znode 节点
+       */
       createMyEphemeralNode();
-
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： 初始化文件系统相关
+       */
       if (updateRootDir) {
         // initialize file system by the config fs.defaultFS and hbase.rootdir from master
         initializeFileSystem();
@@ -1611,6 +1689,12 @@ public class HRegionServer extends Thread
       }
 
       // Save it in a file, this will allow to see if we crash
+
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： 将 znode 信息持久化到 本地磁盘
+       *  需配置环境变量： HBASE_ZNODE_FILE
+       */
       ZNodeClearer.writeMyEphemeralNodeOnDisk(getMyEphemeralNodePath());
 
       // This call sets up an initialized replication and WAL. Later we start it up.
@@ -1622,9 +1706,17 @@ public class HRegionServer extends Thread
       this.metricsRegionServer =
         new MetricsRegionServer(metricsRegionServerImpl, conf, metricsTable);
       // Now that we have a metrics source, start the pause monitor
+      // TODO 注释： JVM 监视器
       this.pauseMonitor = new JvmPauseMonitor(conf, getMetrics().getMetricsSource());
       pauseMonitor.start();
-
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释：
+       *  1、启动工作线程
+       *  2、启动一系列杂务服务
+       *  3、启动 HeapMemoryManager
+       *  4、MemStoreChunkCreator
+       */
       // There is a rare case where we do NOT want services to start. Check config.
       if (getConfiguration().getBoolean("hbase.regionserver.workers", true)) {
         startServices();
@@ -2795,6 +2887,10 @@ public class HRegionServer extends Thread
    */
   private RegionServerStartupResponse reportForDuty() throws IOException {
     if (this.masterless) return RegionServerStartupResponse.getDefaultInstance();
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 获取和 master 联系的 stub
+     */
     ServerName masterServerName = createRegionServerStatusStub(true);
     RegionServerStatusService.BlockingInterface rss = rssStub;
     if (masterServerName == null || rss == null) return null;
@@ -2810,13 +2906,20 @@ public class HRegionServer extends Thread
         + ", startcode=" + this.startcode);
       long now = EnvironmentEdgeManager.currentTime();
       int port = rpcServices.isa.getPort();
+      // TODO 注释： 构建 RegionServerStartupRequest 实例
       RegionServerStartupRequest.Builder request = RegionServerStartupRequest.newBuilder();
+      // TODO 注释： request 中设置了四个信息：  hostname, port, startcode, now
       if (!StringUtils.isBlank(useThisHostnameInstead)) {
         request.setUseThisHostnameInstead(useThisHostnameInstead);
       }
       request.setPort(port);
       request.setServerStartCode(this.startcode);
       request.setServerCurrentTime(now);
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： HRegionServer 启动
+       *  rss：MasterRpcService
+       */
       result = rss.regionServerStartup(null, request.build());
     } catch (ServiceException se) {
       IOException ioe = ProtobufUtil.getRemoteException(se);
