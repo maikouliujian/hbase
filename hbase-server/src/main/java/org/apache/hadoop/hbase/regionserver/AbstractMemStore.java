@@ -80,6 +80,15 @@ public abstract class AbstractMemStore implements MemStore {
     this.conf = conf;
     this.comparator = c;
     this.regionServices = regionServices;
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 创建 CellSet, MutableSegment, ThreadSafeMemStoreSizing 等组件
+     *  1、ThreadSafeMemStoreSizing 统计内存使用的
+     *  2、CellSet  Cell 集合
+     *  3、Segment 其实有两种，MutableSegment 可变的【一个】，ImmutableSegment不可变的【多个】
+     *          MutableSegment 可变的， 应对当前这个 memstore 数据的写入
+     *          ImmutableSegment 不可变的，MutableSegment 装满了之后，变成 ImmutableSegment 执行溢写形成 HFile
+     */
     resetActive();
     resetTimeOfOldestEdit();
     this.snapshot = SegmentFactory.instance().createImmutableSegment(c);
@@ -87,9 +96,14 @@ public abstract class AbstractMemStore implements MemStore {
   }
 
   protected void resetActive() {
+    // TODO 注释： 用来做 堆内存使用 计数的
     // Record the MutableSegment' heap overhead when initialing
     MemStoreSizing memstoreAccounting = new NonThreadSafeMemStoreSizing();
     // Reset heap to not include any keys
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 创建 MutableSegment 实例【2m大小的内存区域】
+     */
     active = SegmentFactory.instance().createMutableSegment(conf, comparator, memstoreAccounting);
     // regionServices can be null when testing
     if (regionServices != null) {

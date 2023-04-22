@@ -196,6 +196,7 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.ReplicationProtos.Updat
  * A short-circuit connection that can bypass the RPC layer (serialization, deserialization,
  * networking, etc..) when talking to a local master
  */
+
 @InterfaceAudience.Private
 public class ShortCircuitMasterConnection implements MasterKeepAliveConnection {
 

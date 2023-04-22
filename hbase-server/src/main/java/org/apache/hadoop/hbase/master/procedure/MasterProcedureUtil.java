@@ -104,6 +104,10 @@ public final class MasterProcedureUtil {
 
     protected long submitProcedure(final Procedure<MasterProcedureEnv> proc) {
       assert procId == null : "submitProcedure() was already called, running procId=" + procId;
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： 提交 Procedure 到 ProcedureExecutor
+       */
       procId = getProcedureExecutor().submitProcedure(proc, nonceKey);
       return procId;
     }

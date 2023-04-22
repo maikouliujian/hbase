@@ -96,7 +96,7 @@ public class MasterProcedureScheduler extends AbstractProcedureScheduler {
     (n, k) -> n.compareKey((String) k);
   private final static AvlKeyComparator<MetaQueue> META_QUEUE_KEY_COMPARATOR =
     (n, k) -> n.compareKey((TableName) k);
-
+  //todo 四个不同优先级的队列
   private final FairQueue<ServerName> serverRunQueue = new FairQueue<>();
   private final FairQueue<TableName> tableRunQueue = new FairQueue<>();
   private final FairQueue<String> peerRunQueue = new FairQueue<>();
@@ -120,6 +120,7 @@ public class MasterProcedureScheduler extends AbstractProcedureScheduler {
 
   @Override
   protected void enqueue(final Procedure proc, final boolean addFront) {
+    //todo 根据不同优先级加入到不同的队列中
     if (isMetaProcedure(proc)) {
       doAdd(metaRunQueue, getMetaQueue(), proc, addFront);
     } else if (isTableProcedure(proc)) {
@@ -168,6 +169,7 @@ public class MasterProcedureScheduler extends AbstractProcedureScheduler {
       || serverRunQueue.hasRunnables() || peerRunQueue.hasRunnables();
   }
 
+  //todo 按照优先级出队列
   @Override
   protected Procedure dequeue() {
     // meta procedure is always the first priority

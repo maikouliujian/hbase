@@ -703,6 +703,10 @@ public class MasterRpcServices extends RSRpcServices implements MasterService.Bl
     TableDescriptor tableDescriptor = ProtobufUtil.toTableDescriptor(req.getTableSchema());
     byte[][] splitKeys = ProtobufUtil.getSplitKeysArray(req);
     try {
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释：master = HMaster
+       */
       long procId =
         master.createTable(tableDescriptor, splitKeys, req.getNonceGroup(), req.getNonce());
       LOG.info(master.getClientIdAuditPrefix() + " procedure request for creating table: "

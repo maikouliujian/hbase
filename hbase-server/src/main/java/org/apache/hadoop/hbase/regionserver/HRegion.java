@@ -726,10 +726,15 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
    * @param rsServices reference to {@link RegionServerServices} or null
    * @deprecated Use other constructors.
    */
+  //todo 构造
   @Deprecated
   public HRegion(final Path tableDir, final WAL wal, final FileSystem fs,
     final Configuration confParam, final RegionInfo regionInfo, final TableDescriptor htd,
     final RegionServerServices rsServices) {
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 7个参数 变成 5 个参数
+     */
     this(new HRegionFileSystem(confParam, fs, tableDir, regionInfo), wal, confParam, htd,
       rsServices);
   }
@@ -760,6 +765,10 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
 
     this.wal = wal;
     this.fs = fs;
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： MVCC 版本控制器
+     */
     this.mvcc = new MultiVersionConcurrencyControl(getRegionInfo().getShortNameToLog());
 
     // 'conf' renamed to 'confParam' b/c we use this.conf in the constructor
@@ -772,8 +781,10 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     this.lock = new ReentrantReadWriteLock(
       conf.getBoolean(FAIR_REENTRANT_CLOSE_LOCK, DEFAULT_FAIR_REENTRANT_CLOSE_LOCK));
     this.regionLockHolders = new ConcurrentHashMap<>();
+    // TODO 注释：默认 3600000
     this.flushCheckInterval =
       conf.getInt(MEMSTORE_PERIODIC_FLUSH_INTERVAL, DEFAULT_CACHE_FLUSH_INTERVAL);
+    // TODO 注释： 默认30000000
     this.flushPerChanges = conf.getLong(MEMSTORE_FLUSH_PER_CHANGES, DEFAULT_FLUSH_PER_CHANGES);
     if (this.flushPerChanges > MAX_FLUSH_PER_CHANGES) {
       throw new IllegalArgumentException(
@@ -807,6 +818,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       this.blockCache = rsServices.getBlockCache().orElse(null);
       this.mobFileCache = rsServices.getMobFileCache().orElse(null);
     }
+    // TODO 注释：
     this.regionServicesForStores = new RegionServicesForStores(this, rsServices);
 
     setHTableSpecificConf();
@@ -873,8 +885,9 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
         ? false
         : conf.getBoolean(HConstants.ENABLE_CLIENT_BACKPRESSURE,
           HConstants.DEFAULT_ENABLE_CLIENT_BACKPRESSURE);
-
+    // TODO 注释： 最大 cell 大小： 10M
     this.maxCellSize = conf.getLong(HBASE_MAX_CELL_SIZE_KEY, DEFAULT_MAX_CELL_SIZE);
+    // TODO 注释： 最小批次大小： 20KB
     this.miniBatchSize =
       conf.getInt(HBASE_REGIONSERVER_MINIBATCH_SIZE, DEFAULT_HBASE_REGIONSERVER_MINIBATCH_SIZE);
 
@@ -934,6 +947,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     MonitoredTask status = TaskMonitor.get().createStatus("Initializing region " + this, true);
     long nextSeqId = -1;
     try {
+      //todo 初始化
       nextSeqId = initializeRegionInternals(reporter, status);
       return nextSeqId;
     } catch (IOException e) {
@@ -984,6 +998,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
 
     // Initialize all the HStores
     status.setStatus("Initializing all the Stores");
+    //todo 初始化stores
     long maxSeqId = initializeStores(reporter, status);
     this.mvcc.advanceTo(maxSeqId);
     if (!isRestoredRegion && ServerRegionReplicaUtil.shouldReplayRecoveredEdits(this)) {
@@ -1099,7 +1114,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     long maxSeqId = -1;
     // initialized to -1 so that we pick up MemstoreTS from column families
     long maxMemstoreTS = -1;
-
+       //todo store的数量和cf数量是一比一的
     if (htableDescriptor.getColumnFamilyCount() != 0) {
       // initialize the thread pool for opening stores in parallel.
       ThreadPoolExecutor storeOpenerThreadPool =
@@ -1113,6 +1128,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
         completionService.submit(new Callable<HStore>() {
           @Override
           public HStore call() throws IOException {
+            //todo 初始化store
             return instantiateHStore(family, warmup);
           }
         });
@@ -6356,17 +6372,20 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     fs.delete(p, false);
     return true;
   }
-
+  // TODO 注释： MOB File 不大不小的文件 设计了一个专门的文件存储方案，HFile V3
   protected HStore instantiateHStore(final ColumnFamilyDescriptor family, boolean warmup)
     throws IOException {
+    // TODO 注释： 如果 开启了 MOB，但是 HFile 版本设置 < 3, 则报错！
     if (family.isMobEnabled()) {
       if (HFile.getFormatVersion(this.conf) < HFile.MIN_FORMAT_VERSION_WITH_TAGS) {
         throw new IOException("A minimum HFile version of " + HFile.MIN_FORMAT_VERSION_WITH_TAGS
           + " is required for MOB feature. Consider setting " + HFile.FORMAT_VERSION_KEY
           + " accordingly.");
       }
+      // TODO 注释： 开起了 MOB，则创建的是： HMobStore
       return new HMobStore(this, family, this.conf, warmup);
     }
+    // TODO 注释： 否则创建常规的 HStore
     return new HStore(this, family, this.conf, warmup);
   }
 
@@ -7627,6 +7646,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
   public static HRegion newHRegion(Path tableDir, WAL wal, FileSystem fs, Configuration conf,
     RegionInfo regionInfo, final TableDescriptor htd, RegionServerServices rsServices) {
     try {
+      // TODO 注释： region 的实现类是： hbase.hregion.impl =  HRegion
       @SuppressWarnings("unchecked")
       Class<? extends HRegion> regionClass =
         (Class<? extends HRegion>) conf.getClass(HConstants.REGION_IMPL, HRegion.class);
@@ -7670,11 +7690,26 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     final boolean initialize, RegionServerServices rsRpcServices) throws IOException {
     LOG.info("creating " + info + ", tableDescriptor="
       + (hTableDescriptor == null ? "null" : hTableDescriptor) + ", regionDir=" + rootDir);
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 创建 region 文件夹
+     *  regionDir = /hbase234/data/default/user_info/6e12e87c75fab6d0d7e895520e300c85
+     *  rootDir = /hbase234
+     */
     createRegionDir(conf, info, rootDir);
     FileSystem fs = rootDir.getFileSystem(conf);
     Path tableDir = CommonFSUtils.getTableDir(rootDir, info.getTable());
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 创建 region, 构造方法，主要是初始化了各种参数
+     *  通过反射来构建 HRegion 实例，传递了 7 个参数
+     */
     HRegion region =
       HRegion.newHRegion(tableDir, wal, fs, conf, info, hTableDescriptor, rsRpcServices);
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： HRegion 初始化,store初始化
+     */
     if (initialize) {
       region.initialize(null);
     }
@@ -7699,9 +7734,14 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
   public static HRegionFileSystem createRegionDir(Configuration configuration, RegionInfo ri,
     Path rootDir) throws IOException {
     FileSystem fs = rootDir.getFileSystem(configuration);
+    // TODO 注释： 获取表目录 /rootDir/data/namespace/tableName
     Path tableDir = CommonFSUtils.getTableDir(rootDir, ri.getTable());
     // If directory already exists, will log warning and keep going. Will try to create
     // .regioninfo. If one exists, will overwrite.
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 写 regoinDir/.regioninfo 信息
+     */
     return HRegionFileSystem.createRegionOnFileSystem(configuration, fs, tableDir, ri);
   }
 

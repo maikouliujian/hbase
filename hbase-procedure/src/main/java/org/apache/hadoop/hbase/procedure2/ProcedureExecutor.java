@@ -175,6 +175,7 @@ public class ProcedureExecutor<TEnvironment> {
   /**
    * Helper map to lookup the live procedures by ID. This map contains every procedure.
    * root-procedures and subprocedures.
+   * //todo 所有的Procedure在内存中维护一份
    */
   private final ConcurrentHashMap<Long, Procedure<TEnvironment>> procedures =
     new ConcurrentHashMap<>();
@@ -557,6 +558,7 @@ public class ProcedureExecutor<TEnvironment> {
   public void init(int numThreads, boolean abortOnCorruption) throws IOException {
     // We have numThreads executor + one timer thread used for timing out
     // procedures and triggering periodic procedures.
+    // TODO 注释： 核心线程数 和 最大线程数
     this.corePoolSize = numThreads;
     this.maxPoolSize = 10 * numThreads;
     LOG.info("Starting {} core workers (bigger of cpus/4 or 16) with max (burst) worker count={}",
@@ -565,7 +567,10 @@ public class ProcedureExecutor<TEnvironment> {
     this.threadGroup = new ThreadGroup("PEWorkerGroup");
     this.timeoutExecutor = new TimeoutExecutorThread<>(this, threadGroup, "ProcExecTimeout");
     this.workerMonitorExecutor = new TimeoutExecutorThread<>(this, threadGroup, "WorkerMonitor");
-
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 工作线程初始化
+     */
     // Create the workers
     workerId.set(0);
     workerThreads = new CopyOnWriteArrayList<>();
@@ -581,7 +586,10 @@ public class ProcedureExecutor<TEnvironment> {
     et = System.nanoTime();
     LOG.info("Recovered {} lease in {}", store.getClass().getSimpleName(),
       StringUtils.humanTimeDiff(TimeUnit.NANOSECONDS.toMillis(et - st)));
-
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： scheduler = MasterProcedureScheduler
+     */
     // start the procedure scheduler
     scheduler.start();
 
@@ -591,6 +599,7 @@ public class ProcedureExecutor<TEnvironment> {
     // so we can start the threads and accept new procedures.
     // The second step will do the actual load of old procedures.
     st = System.nanoTime();
+    //todo 故障恢复时，加载
     load(abortOnCorruption);
     et = System.nanoTime();
     LOG.info("Loaded {} in {}", store.getClass().getSimpleName(),
@@ -607,15 +616,33 @@ public class ProcedureExecutor<TEnvironment> {
     }
     // Start the executors. Here we must have the lastProcId set.
     LOG.trace("Start workers {}", workerThreads.size());
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释：
+     */
     timeoutExecutor.start();
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释：
+     */
     workerMonitorExecutor.start();
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释：
+     */
     for (WorkerThread worker : workerThreads) {
       worker.start();
     }
-
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释：
+     */
     // Internal chores
     workerMonitorExecutor.add(new WorkerMonitor());
-
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释：
+     */
     // Add completed cleaner chore
     addChore(new CompletedProcedureCleaner<>(conf, store, procExecutionLock, completed,
       nonceKeysToProcIdsMap));
@@ -1008,7 +1035,10 @@ public class ProcedureExecutor<TEnvironment> {
       justification = "FindBugs is blind to the check-for-null")
   public long submitProcedure(Procedure<TEnvironment> proc, NonceKey nonceKey) {
     Preconditions.checkArgument(lastProcId.get() >= 0);
-
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释：
+     */
     prepareProcedure(proc);
 
     final Long currentProcId;
@@ -1023,11 +1053,17 @@ public class ProcedureExecutor<TEnvironment> {
     // Initialize the procedure
     proc.setNonceKey(nonceKey);
     proc.setProcId(currentProcId.longValue());
-
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释：
+     */
     // Commit the transaction
     store.insert(proc, null);
     LOG.debug("Stored {}", proc);
-
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释：
+     */
     // Add the procedure to the executor
     return pushProcedure(proc);
   }
@@ -1081,8 +1117,10 @@ public class ProcedureExecutor<TEnvironment> {
 
     // Submit the new subprocedures
     assert !procedures.containsKey(currentProcId);
+    //todo 内存中维护Procedure
     procedures.put(currentProcId, proc);
     sendProcedureAddedNotification(currentProcId);
+    //todo 假如队列中
     scheduler.addBack(proc);
     return proc.getProcId();
   }
@@ -1384,10 +1422,15 @@ public class ProcedureExecutor<TEnvironment> {
 
       // Execute the procedure
       assert proc.getState() == ProcedureState.RUNNABLE : proc;
+      // TODO 注释： 获取 Lock
       // Note that lock is NOT about concurrency but rather about ensuring
       // ownership of a procedure of an entity such as a region or table
       LockState lockState = acquireLock(proc);
       switch (lockState) {
+        /*************************************************
+         * TODO 马中华 https://blog.csdn.net/zhongqi2513
+         *  注释：执行
+         */
         case LOCK_ACQUIRED:
           execProcedure(procStack, proc);
           break;
@@ -1643,6 +1686,10 @@ public class ProcedureExecutor<TEnvironment> {
       reExecute = false;
       procedure.resetPersistence();
       try {
+        /*************************************************
+         * TODO 马中华 https://blog.csdn.net/zhongqi2513
+         *  注释： procedure = StateMachineProcedure
+         */
         subprocs = procedure.doExecute(getEnvironment());
         if (subprocs != null && subprocs.length == 0) {
           subprocs = null;
@@ -1925,6 +1972,13 @@ public class ProcedureExecutor<TEnvironment> {
   // ==========================================================================
   // Worker Thread
   // ==========================================================================
+  /*************************************************
+   * TODO 马中华 https://blog.csdn.net/zhongqi2513
+   *  注释：
+   *  run() 方法的逻辑：
+   *  1、通过 Scheduler 调度器，从4 个队列按照 优先级取 RPC 对应的 Procedure
+   *  2、执行 Proceduure
+   */
   private class WorkerThread extends StoppableThread {
     private final AtomicLong executionStartTime = new AtomicLong(Long.MAX_VALUE);
     private volatile Procedure<TEnvironment> activeProcedure;
@@ -1948,6 +2002,10 @@ public class ProcedureExecutor<TEnvironment> {
       long lastUpdate = EnvironmentEdgeManager.currentTime();
       try {
         while (isRunning() && keepAlive(lastUpdate)) {
+          /*************************************************
+           * TODO 马中华 https://blog.csdn.net/zhongqi2513
+           *  注释： 获取 Procedure
+           */
           @SuppressWarnings("unchecked")
           Procedure<TEnvironment> proc = scheduler.poll(keepAliveTime, TimeUnit.MILLISECONDS);
           if (proc == null) {
@@ -1961,6 +2019,10 @@ public class ProcedureExecutor<TEnvironment> {
           executionStartTime.set(EnvironmentEdgeManager.currentTime());
           IdLock.Entry lockEntry = procExecutionLock.getLockEntry(proc.getProcId());
           try {
+            /*************************************************
+             * TODO 马中华 https://blog.csdn.net/zhongqi2513
+             *  注释： 执行 Procedure
+             */
             executeProcedure(proc);
           } catch (AssertionError e) {
             LOG.info("ASSERT pid=" + proc.getProcId(), e);

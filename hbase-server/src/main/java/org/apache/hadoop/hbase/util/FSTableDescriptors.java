@@ -562,8 +562,13 @@ public class FSTableDescriptors implements TableDescriptors {
       }
       tableInfoDirPath = new Path(tableInfoDir, filename);
       try {
+        /*************************************************
+         * TODO 马中华 https://blog.csdn.net/zhongqi2513
+         *  注释： 写入 TableDescriptor 到 .tmp 中
+         */
         writeTD(fs, tempPath, htd);
         fs.mkdirs(tableInfoDirPath.getParent());
+        //todo 做rename操作
         if (!fs.rename(tempPath, tableInfoDirPath)) {
           throw new IOException("Failed rename of " + tempPath + " to " + tableInfoDirPath);
         }

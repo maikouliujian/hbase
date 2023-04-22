@@ -81,6 +81,15 @@ public class MasterProcedureEnv implements ConfigurationObserver {
   public MasterProcedureEnv(final MasterServices master,
     final RSProcedureDispatcher remoteDispatcher) {
     this.master = master;
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： MasterProcedureScheduler 负责调度的
+     *  完成的主要工作就是：把各种不同优先级的请求，分别放入到四个不同的队列
+     *  优先从优先级高的队列取出，请求让work thread来执行
+     *  1、维护四个队列
+     *  2、enqueue 入队
+     *  3、dequeue 出队
+     */
     this.procSched = new MasterProcedureScheduler(
       procId -> master.getMasterProcedureExecutor().getProcedure(procId));
     this.remoteDispatcher = remoteDispatcher;

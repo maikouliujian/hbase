@@ -89,18 +89,34 @@ public class RpcRetryingCallerImpl<T> implements RpcRetryingCaller<T> {
     }
   }
 
+  /*************************************************
+   * TODO 马中华 https://blog.csdn.net/zhongqi2513
+   *  注释： 不管最终发送的是 DDL 的请求，还是 DML 的请求，都是通过这个方法提交的
+   *  1、DDL 请求， 则发送 RPC 给 HMaster， RpcClinet 链接到 HMaster
+   *  2、DML 请求，则发送 RPC 给 HRegionServer， RpcClient 链接到 HRegionServer
+   */
   @Override
   public T callWithRetries(RetryingCallable<T> callable, int callTimeout)
     throws IOException, RuntimeException {
     List<RetriesExhaustedException.ThrowableWithExtraContext> exceptions = new ArrayList<>();
     tracker.start();
     context.clear();
+    // TODO 注释： 带重试机制的 RPC 请求发送
     for (int tries = 0;; tries++) {
       long expectedSleep;
       try {
+        // TODO 注释： DDL 请求： 获取和 HMaster 之间的链接  callable = MasterCallable
+        // TODO 注释： 创建了 master 实例对象： MasterKeepAliveConnection
+        // TODO 注释： DML 请求： 请求 zk 获取 meta 表数据   callable = RegionServerCallable
+        // TODO 注释： 获取到了 row 对应的 region 的位置信息。
         // bad cache entries are cleared in the call to RetryingCallable#throwable() in catch block
         callable.prepare(tries != 0);
         interceptor.intercept(context.prepare(callable, tries));
+        /*************************************************
+         * TODO 马中华 https://blog.csdn.net/zhongqi2513
+         *  注释：真正发送 RPC
+         *  上述的代码，就是确认，我到底应该吧 请求发送给 HMaster 还是 HRegionServer
+         */
         return callable.call(getTimeout(callTimeout));
       } catch (PreemptiveFastFailException e) {
         throw e;

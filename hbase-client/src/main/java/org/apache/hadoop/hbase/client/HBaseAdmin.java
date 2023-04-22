@@ -289,6 +289,7 @@ public class HBaseAdmin implements Admin {
       HConstants.DEFAULT_HBASE_CLIENT_OPERATION_TIMEOUT);
     this.rpcTimeout =
       this.conf.getInt(HConstants.HBASE_RPC_TIMEOUT_KEY, HConstants.DEFAULT_HBASE_RPC_TIMEOUT);
+    //todo 客户端同步等待获取请求响应时间：10min
     this.syncWaitTimeout = this.conf.getInt("hbase.client.sync.wait.timeout.msec", 10 * 60000); // 10min
     this.getProcedureTimeout =
       this.conf.getInt("hbase.client.procedure.future.get.timeout.msec", 10 * 60000); // 10min
@@ -595,7 +596,15 @@ public class HBaseAdmin implements Admin {
     }
     return this.pause * HConstants.RETRY_BACKOFF[triesCount];
   }
-
+  /*************************************************
+   * TODO 马中华 https://blog.csdn.net/zhongqi2513
+   *  注释：
+   *  1、TableDescriptor       表定义（TableName  ColumnDescriptor）
+   *  2、startKey          region 起始 rowkey
+   *  3、endKey
+   *  4、numRegions        region 的个数
+   *  一根绳子用startKey和endKey切开，至少是3个region
+   */
   @Override
   public void createTable(TableDescriptor desc, byte[] startKey, byte[] endKey, int numRegions)
     throws IOException {
@@ -604,11 +613,14 @@ public class HBaseAdmin implements Admin {
     } else if (Bytes.compareTo(startKey, endKey) >= 0) {
       throw new IllegalArgumentException("Start key must be smaller than end key");
     }
+    // TODO 注释： 如果 region 个数 == 3
     if (numRegions == 3) {
       createTable(desc, new byte[][] { startKey, endKey });
       return;
     }
+    // TODO 注释： 大于 3 个 region 的
     byte[][] splitKeys = Bytes.split(startKey, endKey, numRegions - 3);
+    // TODO 注释： splitKeys = [a,b,c] => 4 个 region
     if (splitKeys == null || splitKeys.length != numRegions - 1) {
       throw new IllegalArgumentException("Unable to split key range into enough regions");
     }
@@ -621,10 +633,14 @@ public class HBaseAdmin implements Admin {
     if (desc.getTableName() == null) {
       throw new IllegalArgumentException("TableName cannot be null");
     }
+    // TODO 注释： [a,a,b,c,d], [b,c,e,d,a] ==> [a,a,b,c,d]
+    // TODO 注释： split key 【排序, 去重】
     if (splitKeys != null && splitKeys.length > 0) {
+      //todo 1、排序
       Arrays.sort(splitKeys, Bytes.BYTES_COMPARATOR);
       // Verify there are no duplicate split keys
       byte[] lastKey = null;
+      //todo 2、校验去重
       for (byte[] splitKey : splitKeys) {
         if (Bytes.compareTo(splitKey, HConstants.EMPTY_BYTE_ARRAY) == 0) {
           throw new IllegalArgumentException(
@@ -637,7 +653,15 @@ public class HBaseAdmin implements Admin {
         lastKey = splitKey;
       }
     }
-
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 执行一个 MasterCallable
+     *  实质上，是发起一个 RPC 请求给 HMaster
+     *  -
+     *  executeCallable 中的参数有两种类型：
+     *  1、MasterCallable        当前请求提交给 HMaster             DDL请求
+     *  2、ClientServiceCallable 当前请求提交给 HRegionServer       DML请求
+     */
     CreateTableResponse response = executeCallable(
       new MasterCallable<CreateTableResponse>(getConnection(), getRpcControllerFactory()) {
         Long nonceGroup = ng.getNonceGroup();
@@ -645,9 +669,17 @@ public class HBaseAdmin implements Admin {
 
         @Override
         protected CreateTableResponse rpcCall() throws Exception {
+          //todo 设置优先级
           setPriority(desc.getTableName());
+          // TODO 注释： 构造请求对象
           CreateTableRequest request =
             RequestConverter.buildCreateTableRequest(desc, splitKeys, nonceGroup, nonce);
+          /*************************************************
+           * TODO 马中华 https://blog.csdn.net/zhongqi2513
+           *  注释： 发送请求
+           *  master = MasterKeepAliveConnection
+           *  第三个网络来回： createTable() RPC HMaster
+           */
           return master.createTable(getRpcController(), request);
         }
       });
@@ -2943,14 +2975,23 @@ public class HBaseAdmin implements Admin {
 
   private <C extends RetryingCallable<V> & Closeable, V> V executeCallable(C callable)
     throws IOException {
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： callable = MasterCallable
+     */
     return executeCallable(callable, rpcCallerFactory, operationTimeout, rpcTimeout);
   }
 
   static private <C extends RetryingCallable<V> & Closeable, V> V executeCallable(C callable,
     RpcRetryingCallerFactory rpcCallerFactory, int operationTimeout, int rpcTimeout)
     throws IOException {
+    // TODO 注释： 通过 rpcCallerFactory 工厂拿到一个 RpcRetryingCaller
     RpcRetryingCaller<V> caller = rpcCallerFactory.newCaller(rpcTimeout);
     try {
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： 带重试的发送 RPC 请求
+       */
       return caller.callWithRetries(callable, operationTimeout);
     } finally {
       callable.close();

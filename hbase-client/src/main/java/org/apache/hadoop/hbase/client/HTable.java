@@ -157,6 +157,7 @@ public class HTable implements Table {
     this.connection = Preconditions.checkNotNull(connection, "connection is null");
     this.configuration = connection.getConfiguration();
     this.connConfiguration = connection.getConnectionConfiguration();
+    // TODO 注释： 线程池
     if (pool == null) {
       this.pool = getDefaultExecutor(this.configuration);
       this.cleanupPoolOnClose = true;
@@ -186,6 +187,10 @@ public class HTable implements Table {
 
     // puts need to track errors globally due to how the APIs currently work.
     multiAp = this.connection.getAsyncProcess();
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： Region 定位器： HRegionLocator
+     */
     this.locator = new HRegionLocator(tableName, connection);
   }
 

@@ -99,6 +99,7 @@ public class ConnectionFactory {
    * @return Connection object for <code>conf</code>
    */
   public static Connection createConnection() throws IOException {
+    // TODO 注释： 加载配置信息
     Configuration conf = HBaseConfiguration.create();
     return createConnection(conf, null, AuthUtil.loginClient(conf));
   }
@@ -214,6 +215,7 @@ public class ConnectionFactory {
    */
   public static Connection createConnection(Configuration conf, ExecutorService pool,
     final User user) throws IOException {
+    // TODO 注释： 默认链接实现类
     String className = conf.get(ClusterConnection.HBASE_CLIENT_CONNECTION_IMPL,
       ConnectionImplementation.class.getName());
     Class<?> clazz;
@@ -223,6 +225,7 @@ public class ConnectionFactory {
       throw new IOException(e);
     }
     try {
+      // TODO 注释： 通过反射来创建 ConnectionImplementation 实例
       // Default HCM#HCI is not accessible; make it so before invoking.
       Constructor<?> constructor =
         clazz.getDeclaredConstructor(Configuration.class, ExecutorService.class, User.class);

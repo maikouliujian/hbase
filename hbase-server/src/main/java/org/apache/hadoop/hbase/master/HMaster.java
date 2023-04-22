@@ -1677,9 +1677,25 @@ public class HMaster extends HRegionServer implements MasterServices {
       this.regionServerTracker.stop();
     }
   }
-
+  /*************************************************
+   * TODO 马中华 https://blog.csdn.net/zhongqi2513
+   *  注释：
+   *  1、MasterProcedureEnv 环境对象
+   *  2、MasterProcedureScheduler 调度器， 根据 RPC 请求的优先级，进行分类，优先级高的队列中的 RPC 请求先处理
+   *      优先级高的先处理 + 先提交的先处理
+   *  3、RegionProcedureStore 存储对象
+   *  4、ProcedureExecutor Procedure 执行器
+   *  -
+   *  5、ProcedureExecutor 初始化
+   */
   private void createProcedureExecutor() throws IOException {
+    // TODO 注释： 内部创建了 MasterProcedureScheduler
     MasterProcedureEnv procEnv = new MasterProcedureEnv(this);
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 用于持久化 procedure 的状态
+     *  防止宕机
+     */
     procedureStore = new RegionProcedureStore(this, masterRegion,
       new MasterProcedureEnv.FsUtilsLeaseRecovery(this));
     procedureStore.registerListener(new ProcedureStoreListener() {
@@ -1689,26 +1705,44 @@ public class HMaster extends HRegionServer implements MasterServices {
         abort("The Procedure Store lost the lease", null);
       }
     });
+    // TODO 注释： MasterProcedureScheduler 负责 Procedure 优先级的调度
     MasterProcedureScheduler procedureScheduler = procEnv.getProcedureScheduler();
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 负责 procedure 的编排和运行
+     */
     procedureExecutor = new ProcedureExecutor<>(conf, procEnv, procedureStore, procedureScheduler);
     configurationManager.registerObserver(procEnv);
-
+    // TODO 注释： cpu 和 线程数
     int cpus = Runtime.getRuntime().availableProcessors();
     final int numThreads = conf.getInt(MasterProcedureConstants.MASTER_PROCEDURE_THREADS, Math.max(
       (cpus > 0 ? cpus / 4 : 0), MasterProcedureConstants.DEFAULT_MIN_MASTER_PROCEDURE_THREADS));
+    // TODO 注释： 默认值： false
     final boolean abortOnCorruption =
       conf.getBoolean(MasterProcedureConstants.EXECUTOR_ABORT_ON_CORRUPTION,
         MasterProcedureConstants.DEFAULT_EXECUTOR_ABORT_ON_CORRUPTION);
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： RegionProcedureStore 启动
+     */
     procedureStore.start(numThreads);
     // Just initialize it but do not start the workers, we will start the workers later by calling
     // startProcedureExecutor. See the javadoc for finishActiveMasterInitialization for more
     // details.
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释：procedureExecutor 初始化
+     *  内部创建的 WorkerThread 工作线程： 至少 16 个！
+     */
     procedureExecutor.init(numThreads, abortOnCorruption);
     if (!procEnv.getRemoteDispatcher().start()) {
       throw new HBaseIOException("Failed start of remote dispatcher");
     }
   }
-
+  /*************************************************
+   * TODO 马中华 https://blog.csdn.net/zhongqi2513
+   *  注释：procedureExecutor 启动
+   */
   private void startProcedureExecutor() throws IOException {
     procedureExecutor.startWorkers();
   }
@@ -2216,25 +2250,37 @@ public class HMaster extends HRegionServer implements MasterServices {
       throw new HBaseIOException(ioe);
     }
   }
-
+  /*************************************************
+   * TODO 马中华 https://blog.csdn.net/zhongqi2513
+   *  注释： 创建表
+   *  客户端的代码处理，到此为止，结束了。进入到服务端的处理
+   *  procedureExecutor.sumbit(new CreateTableProcedure())
+   */
   @Override
   public long createTable(final TableDescriptor tableDescriptor, final byte[][] splitKeys,
     final long nonceGroup, final long nonce) throws IOException {
     checkInitialized();
+    // TODO 注释： 表定义（表名，列簇的定义）
     TableDescriptor desc = getMasterCoprocessorHost().preCreateTableRegionsInfos(tableDescriptor);
     if (desc == null) {
       throw new IOException("Creation for " + tableDescriptor + " is canceled by CP");
     }
+    // TODO 注释： namespace，   完整的表名： namespace:tablename
     String namespace = desc.getTableName().getNamespaceAsString();
     this.clusterSchemaService.getNamespace(namespace);
-
+    // TODO 注释： 根据 splitKeys ，创建 splitKeys.size() + 1 个 RegionInfo
+    // TODO 注释： splitKeys  region 分隔符数据组  =  [a,b,c,d]
     RegionInfo[] newRegions = ModifyRegionUtils.createRegionInfos(desc, splitKeys);
     TableDescriptorChecker.sanityCheck(conf, desc);
-
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 提交 Procedure
+     */
     return MasterProcedureUtil
       .submitProcedure(new MasterProcedureUtil.NonceProcedureRunnable(this, nonceGroup, nonce) {
         @Override
         protected void run() throws IOException {
+          // TODO 注释： 协处理器 pre 工作
           getMaster().getMasterCoprocessorHost().preCreateTable(desc, newRegions);
 
           LOG.info(getClientIdAuditPrefix() + " create " + desc);
@@ -2245,10 +2291,14 @@ public class HMaster extends HRegionServer implements MasterServices {
           // We need to wait for the procedure to potentially fail due to "prepare" sanity
           // checks. This will block only the beginning of the procedure. See HBASE-19953.
           ProcedurePrepareLatch latch = ProcedurePrepareLatch.createBlockingLatch();
+          /*************************************************
+           * TODO 马中华 https://blog.csdn.net/zhongqi2513
+           *  注释： 提交 CreateTableProcedure 工作
+           */
           submitProcedure(
             new CreateTableProcedure(procedureExecutor.getEnvironment(), desc, newRegions, latch));
           latch.await();
-
+          // TODO 注释： 协处理器 post 工作
           getMaster().getMasterCoprocessorHost().postCreateTable(desc, newRegions);
         }
 

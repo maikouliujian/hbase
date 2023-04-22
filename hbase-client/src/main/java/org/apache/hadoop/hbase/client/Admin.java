@@ -343,6 +343,10 @@ public interface Admin extends Abortable, Closeable {
    * @throws IOException                                       if a remote or network exception
    *                                                           occurs
    */
+  /*************************************************
+   * TODO 马中华 https://blog.csdn.net/zhongqi2513
+   *  注释： 异步处理
+   */
   default void createTable(TableDescriptor desc, byte[][] splitKeys) throws IOException {
     get(createTableAsync(desc, splitKeys), getSyncWaitTimeout(), TimeUnit.MILLISECONDS);
   }

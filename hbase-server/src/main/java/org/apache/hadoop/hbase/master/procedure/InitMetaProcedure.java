@@ -70,7 +70,9 @@ public class InitMetaProcedure extends AbstractStateMachineTableProcedure<InitMe
     throws IOException {
     LOG.info("BOOTSTRAP: creating hbase:meta region");
     FileSystem fs = rootDir.getFileSystem(conf);
+    // TODO 注释： /rootDir/data/namespace/tableName
     Path tableDir = CommonFSUtils.getTableDir(rootDir, TableName.META_TABLE_NAME);
+    // TODO 注释： 如果存在就删除
     if (fs.exists(tableDir) && !fs.delete(tableDir, true)) {
       LOG.warn("Can not delete partial created meta table, continue...");
     }
@@ -78,27 +80,50 @@ public class InitMetaProcedure extends AbstractStateMachineTableProcedure<InitMe
     // created here in bootstrap and it'll need to be cleaned up. Better to
     // not make it in first place. Turn off block caching for bootstrap.
     // Enable after.
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 获取 meta 表的 TableDescriptor 定义
+     *  获取 /hbase234/data/hbase/meta/.tabledesc 目录下拥有最大序列号的
+     *  表信息文件获取 TableDescriptor
+     */
     TableDescriptor metaDescriptor =
       FSTableDescriptors.tryUpdateAndGetMetaTableDescriptor(conf, fs, rootDir);
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 创建 Meta 的 region
+     */
     HRegion
       .createHRegion(RegionInfoBuilder.FIRST_META_REGIONINFO, rootDir, conf, metaDescriptor, null)
       .close();
     return metaDescriptor;
   }
-
+  /*************************************************
+   * TODO 马中华 https://blog.csdn.net/zhongqi2513
+   *  注释： 初始化 meta 的 Procedure 状态机执行
+   */
   @Override
   protected Flow executeFromState(MasterProcedureEnv env, InitMetaState state)
     throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
     LOG.debug("Execute {}", this);
     try {
       switch (state) {
+        /*************************************************
+         * TODO 马中华 https://blog.csdn.net/zhongqi2513
+         *  注释： 初始化 写 meta 表的 HDFS 布局
+         */
         case INIT_META_WRITE_FS_LAYOUT:
           Configuration conf = env.getMasterConfiguration();
           Path rootDir = CommonFSUtils.getRootDir(conf);
+          // TODO 注释： 重点，创建 HRegion
           TableDescriptor td = writeFsLayout(rootDir, conf);
           env.getMasterServices().getTableDescriptors().update(td, true);
           setNextState(InitMetaState.INIT_META_ASSIGN_META);
           return Flow.HAS_MORE_STATE;
+        /*************************************************
+         * TODO 马中华 https://blog.csdn.net/zhongqi2513
+         *  注释： Assign Region
+         *  执行 TransitRegionStateProcedure 的 executeFromState 方法
+         */
         case INIT_META_ASSIGN_META:
           LOG.info("Going to assign meta");
           addChildProcedure(env.getAssignmentManager()

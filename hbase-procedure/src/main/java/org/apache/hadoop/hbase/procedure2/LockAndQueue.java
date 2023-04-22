@@ -84,6 +84,7 @@ public class LockAndQueue implements LockStatus {
       if (p.getParentProcId() == lockOwnerId) {
         return true;
       }
+      //todo
       p = procedureRetriever.apply(p.getParentProcId());
       if (p == null || !p.hasParent()) {
         return false;

@@ -160,6 +160,7 @@ public final class ProcedureUtil {
    * Helper to convert the procedure to protobuf.
    * <p/>
    * Used by ProcedureStore implementations.
+   *
    */
   public static ProcedureProtos.Procedure convertToProtoProcedure(Procedure<?> proc)
     throws IOException {

@@ -47,6 +47,7 @@ public class MetaCache {
 
   /**
    * Map of table to table {@link HRegionLocation}s.
+   * //todo <表名,<startRowkey,RegionLocations>>
    */
   private final ConcurrentMap<TableName,
     ConcurrentNavigableMap<byte[], RegionLocations>> cachedRegionLocations =

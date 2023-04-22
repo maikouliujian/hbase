@@ -78,6 +78,9 @@ public final class SegmentFactory {
   // create mutable segment
   public MutableSegment createMutableSegment(final Configuration conf, CellComparator comparator,
     MemStoreSizing memstoreSizing) {
+    // TODO 注释： 默认实现是： MemStoreLABImpl
+    // TODO 注释： MSLAB ： 内存池化技术（大量的小对象，会产生大量的 内存碎片导致 full GC 频繁）
+    // TODO 注释： 内存划分成一段一段的，每段 2M = Chuck
     MemStoreLAB memStoreLAB = MemStoreLAB.newInstance(conf);
     return generateMutableSegment(conf, comparator, memStoreLAB, memstoreSizing);
   }

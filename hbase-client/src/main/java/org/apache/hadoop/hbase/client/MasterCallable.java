@@ -54,6 +54,11 @@ abstract class MasterCallable<V> implements RetryingCallable<V>, Closeable {
 
   @Override
   public void prepare(boolean reload) throws IOException {
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： master = MasterKeepAliveConnection
+     *  封装了就是 具体的 RPC 请求发送的 protobuf 实现
+     */
     this.master = this.connection.getMaster();
   }
 

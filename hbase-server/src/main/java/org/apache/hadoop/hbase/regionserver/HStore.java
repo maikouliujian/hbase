@@ -237,28 +237,46 @@ public class HStore
     this.conf = StoreUtils.createStoreConfiguration(confParam, region.getTableDescriptor(), family);
 
     this.region = region;
+    // TODO 注释： 初始化 Store 的上下文对象，其实包含的就是 列簇中的各种信息
     this.storeContext = initializeStoreContext(family);
 
     // Assemble the store's home directory and Ensure it exists.
+    // TODO 注释： 创建 Region 的 Store 文件夹
+    // TODO 注释： /hbase234/data/default/user_info/6e12e87c75fab6d0d7e895520e300c85/base_info
     region.getRegionFileSystem().createStoreDir(family.getNameAsString());
 
     // set block storage policy for store directory
+    // TODO 注释： 默认 StoragePolicy = "HOT"
     String policyName = family.getStoragePolicy();
     if (null == policyName) {
       policyName = this.conf.get(BLOCK_STORAGE_POLICY_KEY, DEFAULT_BLOCK_STORAGE_POLICY);
     }
     region.getRegionFileSystem().setStoragePolicy(family.getNameAsString(), policyName.trim());
-
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 用来根据列簇选项，来做不同的 数据块 编码
+     *  family.getDataBlockEncoding() = DataBlockEncoding.NONE
+     *  HFile 本质上，就是一堆 cell 组成的
+     *  Cell 10段数据写进去，一堆Cell 就是一个 DataBlock
+     */
     this.dataBlockEncoder = new HFileDataBlockEncoderImpl(family.getDataBlockEncoding());
 
     // used by ScanQueryMatcher
     long timeToPurgeDeletes = Math.max(conf.getLong("hbase.hstore.time.to.purge.deletes", 0), 0);
     LOG.trace("Time to purge deletes set to {}ms in {}", timeToPurgeDeletes, this);
+    // TODO 注释： 列簇的 TTL 信息
     // Get TTL
     long ttl = determineTTLFromFamily(family);
     // Why not just pass a HColumnDescriptor in here altogether? Even if have
     // to clone it?
     scanInfo = new ScanInfo(conf, family, ttl, timeToPurgeDeletes, region.getCellComparator());
+
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 获取 MemStore 对象
+     *  1、如果启用 in-memory Compaction 则创建的是： CompactingMemStore
+     *  2、否则使用的是默认的 DefaultMemStore
+     */
     this.memstore = getMemstore();
 
     this.offPeakHours = OffPeakHours.getInstance(conf);
@@ -278,8 +296,15 @@ public class HStore
       HStore.closeCheckInterval =
         conf.getInt("hbase.hstore.close.check.interval", 10 * 1000 * 1000 /* 10 MB */);
     }
-
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 创建 StoreEngine
+     */
     this.storeEngine = createStoreEngine(this, this.conf, region.getCellComparator());
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 加载 StoreFile
+     */
     List<HStoreFile> hStoreFiles = loadStoreFiles(warmup);
     // Move the storeSize calculation out of loadStoreFiles() method, because the secondary read
     // replica's refreshStoreFiles() will also use loadStoreFiles() to refresh its store files and
@@ -288,9 +313,10 @@ public class HStore
     this.storeSize.addAndGet(getStorefilesSize(hStoreFiles, sf -> true));
     this.totalUncompressedBytes.addAndGet(getTotalUncompressedBytes(hStoreFiles));
     this.storeEngine.getStoreFileManager().loadFiles(hStoreFiles);
-
+    // TODO 注释： flush 尝试次数： 10
     flushRetriesNumber =
       conf.getInt("hbase.hstore.flush.retries.number", DEFAULT_FLUSH_RETRIES_NUMBER);
+    // TODO 注释： 暂停时间： 1s
     pauseTime = conf.getInt(HConstants.HBASE_SERVER_PAUSE, HConstants.DEFAULT_HBASE_SERVER_PAUSE);
     if (flushRetriesNumber <= 0) {
       throw new IllegalArgumentException(
@@ -337,6 +363,7 @@ public class HStore
   /** Returns MemStore Instance to use in this store. */
   private MemStore getMemstore() {
     MemStore ms = null;
+    // TODO 注释： inMemoryCompaction 默认值为：NONE
     // Check if in-memory-compaction configured. Note MemoryCompactionPolicy is an enum!
     MemoryCompactionPolicy inMemoryCompaction = null;
     if (this.getTableName().isSystemTable()) {
@@ -345,12 +372,18 @@ public class HStore
     } else {
       inMemoryCompaction = getColumnFamilyDescriptor().getInMemoryCompaction();
     }
+    // TODO 注释： 如果为 null，同样设置为默认值 NONE
     if (inMemoryCompaction == null) {
       inMemoryCompaction =
         MemoryCompactionPolicy.valueOf(conf.get(CompactingMemStore.COMPACTING_MEMSTORE_TYPE_KEY,
           CompactingMemStore.COMPACTING_MEMSTORE_TYPE_DEFAULT).toUpperCase());
     }
-
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 创建 MemStore 实例对象
+     *  1、默认情况下，MemStore 的实现： DefaultMemStore
+     *  2、如果启用了 inMemoryCompaction， 则 MemStore 的实现是： CompactingMemStore
+     */
     switch (inMemoryCompaction) {
       case NONE:
         Class<? extends MemStore> memStoreClass =

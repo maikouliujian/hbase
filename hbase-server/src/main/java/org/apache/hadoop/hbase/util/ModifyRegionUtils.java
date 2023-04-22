@@ -125,6 +125,7 @@ public abstract class ModifyRegionUtils {
       completionService.submit(new Callable<RegionInfo>() {
         @Override
         public RegionInfo call() throws IOException {
+          //todo 异步创建region
           return createRegion(conf, rootDir, tableDescriptor, newRegion, task);
         }
       });
@@ -159,6 +160,9 @@ public abstract class ModifyRegionUtils {
     // unless I pass along via the conf.
     Configuration confForWAL = new Configuration(conf);
     confForWAL.set(HConstants.HBASE_DIR, rootDir.toString());
+    //todo
+    //todo 1、在hdfs上创建region 目录
+    //todo 2、返回region对象
     HRegion region = HRegion.createHRegion(newRegion, rootDir, conf, tableDescriptor, null, false);
     try {
       // 2. Custom user code to interact with the created region

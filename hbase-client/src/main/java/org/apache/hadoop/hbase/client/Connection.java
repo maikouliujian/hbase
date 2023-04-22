@@ -91,6 +91,7 @@ public interface Connection extends Abortable, Closeable {
    * @return a Table to use for interactions with this table
    */
   default Table getTable(TableName tableName, ExecutorService pool) throws IOException {
+    //todo
     return getTableBuilder(tableName, pool).build();
   }
 

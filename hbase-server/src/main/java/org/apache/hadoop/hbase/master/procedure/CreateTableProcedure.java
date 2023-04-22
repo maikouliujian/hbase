@@ -73,7 +73,10 @@ public class CreateTableProcedure extends AbstractStateMachineTableProcedure<Cre
     this.tableDescriptor = tableDescriptor;
     this.newRegions = newRegions != null ? Lists.newArrayList(newRegions) : null;
   }
-
+  /*************************************************
+   * TODO 马中华 https://blog.csdn.net/zhongqi2513
+   *  注释： 在一个正常逻辑的上下，如果有  preXXX 和 postXXX , 这些都是协处理器的逻辑
+   */
   @Override
   protected Flow executeFromState(final MasterProcedureEnv env, final CreateTableState state)
     throws InterruptedException {
@@ -81,6 +84,7 @@ public class CreateTableProcedure extends AbstractStateMachineTableProcedure<Cre
     try {
       switch (state) {
         case CREATE_TABLE_PRE_OPERATION:
+          // TODO 注释： 表创建之前的判断
           // Verify if we can create the table
           boolean exists = !prepareCreate(env);
           releaseSyncLatch();
@@ -95,6 +99,16 @@ public class CreateTableProcedure extends AbstractStateMachineTableProcedure<Cre
           break;
         case CREATE_TABLE_WRITE_FS_LAYOUT:
           DeleteTableProcedure.deleteFromFs(env, getTableName(), newRegions, true);
+          // TODO 注释： 准备表在 HDFS 之上的布局
+          // TODO 注释： 创建 HRegion
+          // TODO 注释： table ==> region ==> store
+          // HDFS 中，关于一个 region 的目录是： /hbase234/data/namespace/table/region/store/storeFile
+          // TODO 注释： .regioninfo 存储的就是 RegionInfo 这个对象的信息，这就是 regoin 的元数据
+          // TODO 注释： 1、创建 region 对应的 HDFS 存储目录
+          // TODO 注释： 2、生成 RegionInfo 对象，然后把该对象，写入到 /regionDir/.regioninfo 文件中
+          // TODO 注释： 3、创建 HRegion 对象
+          // TODO 注释： 关于 HRegion 的理解： HStore  MemStore  跳表
+          // TODO 注释： Table Region Store MemStore MutableSegment CellSet ConcurrentSkipListMap
           newRegions = createFsLayout(env, tableDescriptor, newRegions);
           env.getMasterServices().getTableDescriptors().update(tableDescriptor, true);
           setNextState(CreateTableState.CREATE_TABLE_ADD_TO_META);
@@ -238,12 +252,15 @@ public class CreateTableProcedure extends AbstractStateMachineTableProcedure<Cre
   }
 
   private boolean prepareCreate(final MasterProcedureEnv env) throws IOException {
+    // TODO 注释： 获取表定义
     final TableName tableName = getTableName();
+
+    // TODO 注释： 判断表是否存在
     if (env.getMasterServices().getTableDescriptors().exists(tableName)) {
       setFailure("master-create-table", new TableExistsException(getTableName()));
       return false;
     }
-
+    // TODO 注释： 判断列簇的个数 ，不能为0，至少需要一个列簇定义
     // check that we have at least 1 CF
     if (tableDescriptor.getColumnFamilyCount() == 0) {
       setFailure("master-create-table", new DoNotRetryIOException(
@@ -289,8 +306,13 @@ public class CreateTableProcedure extends AbstractStateMachineTableProcedure<Cre
       public List<RegionInfo> createHdfsRegions(final MasterProcedureEnv env,
         final Path tableRootDir, final TableName tableName, final List<RegionInfo> newRegions)
         throws IOException {
+        // TODO 注释： 参数容器
         RegionInfo[] regions =
           newRegions != null ? newRegions.toArray(new RegionInfo[newRegions.size()]) : null;
+        /*************************************************
+         * TODO 马中华 https://blog.csdn.net/zhongqi2513
+         *  注释：创建region
+         */
         return ModifyRegionUtils.createRegions(env.getMasterConfiguration(), tableRootDir,
           tableDescriptor, regions, null);
       }
@@ -302,17 +324,17 @@ public class CreateTableProcedure extends AbstractStateMachineTableProcedure<Cre
     final CreateHdfsRegions hdfsRegionHandler) throws IOException {
     final MasterFileSystem mfs = env.getMasterServices().getMasterFileSystem();
     final Path tempdir = mfs.getTempDir();
-
+    // TODO 注释： 创建 TableDescriptor 表定义
     // 1. Create Table Descriptor
     // using a copy of descriptor, table will be created enabling first
     final Path tempTableDir = CommonFSUtils.getTableDir(tempdir, tableDescriptor.getTableName());
     ((FSTableDescriptors) (env.getMasterServices().getTableDescriptors()))
       .createTableDescriptorForTableDirectory(tempTableDir, tableDescriptor, false);
-
+    // TODO 注释： 创建 HRegion
     // 2. Create Regions
     newRegions =
       hdfsRegionHandler.createHdfsRegions(env, tempdir, tableDescriptor.getTableName(), newRegions);
-
+    // TODO 注释： 生成最终目录
     // 3. Move Table temp directory to the hbase root location
     moveTempDirectoryToHBaseRoot(env, tableDescriptor, tempTableDir);
 

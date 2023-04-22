@@ -290,6 +290,7 @@ public class RegionProcedureStore extends ProcedureStoreBase {
 
   private void serializePut(Procedure<?> proc, List<Mutation> mutations, List<byte[]> rowsToLock)
     throws IOException {
+    //todo 将proc转化为pb格式
     ProcedureProtos.Procedure proto = ProcedureUtil.convertToProtoProcedure(proc);
     byte[] row = Bytes.toBytes(proc.getProcId());
     mutations.add(new Put(row).addColumn(PROC_FAMILY, PROC_QUALIFIER, proto.toByteArray()));

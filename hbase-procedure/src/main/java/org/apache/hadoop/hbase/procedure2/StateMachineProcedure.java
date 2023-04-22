@@ -156,7 +156,12 @@ public abstract class StateMachineProcedure<TEnvironment, TState> extends Proced
       subProcList.add(proc);
     }
   }
-
+  /*************************************************
+   * TODO 马中华 https://blog.csdn.net/zhongqi2513
+   *  注释：
+   *  一个 Procedure 有多个状态
+   *  状态机的的逻辑， 就是吧一个 procedure 从一个状态执行一个逻辑处理之后，变成另外一个状态！
+   */
   @Override
   protected Procedure[] execute(final TEnvironment env)
     throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
@@ -185,6 +190,11 @@ public abstract class StateMachineProcedure<TEnvironment, TState> extends Proced
       }
 
       LOG.trace("{}", this);
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： 真正的状态机的逻辑
+       *  如果执行成功，正常结束，则 stateFlow = HAS_NO_MORE_STATE
+       */
       stateFlow = executeFromState(env, state);
       if (!hasMoreState()) {
         setNextState(EOF_STATE);

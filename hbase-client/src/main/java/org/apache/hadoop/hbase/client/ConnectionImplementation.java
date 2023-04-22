@@ -409,6 +409,11 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
 
   @Override
   public Table getTable(TableName tableName) throws IOException {
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释：DML 客户端
+     *  getBatchPool():初始化线程数为cpu 8倍的线程池
+     */
     return getTable(tableName, getBatchPool());
   }
 
@@ -418,6 +423,7 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
 
       @Override
       public Table build() {
+        //todo
         return new HTable(ConnectionImplementation.this, this, rpcCallerFactory,
           rpcControllerFactory, pool);
       }
@@ -472,6 +478,10 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
 
   @Override
   public Admin getAdmin() throws IOException {
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： DDL 客户端
+     */
     return new HBaseAdmin(this);
   }
 
@@ -1359,6 +1369,10 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
     }
     // Ugly delegation just so we can add in a Close method.
     final MasterProtos.MasterService.BlockingInterface stub = this.masterServiceState.stub;
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 最终返回
+     */
     return new MasterKeepAliveConnection() {
       MasterServiceState mss = masterServiceState;
 
@@ -1467,6 +1481,12 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
       @Override
       public MasterProtos.CreateTableResponse createTable(RpcController controller,
         MasterProtos.CreateTableRequest request) throws ServiceException {
+        /*************************************************
+         * TODO 马中华 https://blog.csdn.net/zhongqi2513
+         *  注释： 创建表
+         *  1、最终，这个 RPC 请求发送给了 HMaster
+         *  2、HMaster 中的 RpcServer 来处理： MasterRpcServices
+         */
         return stub.createTable(controller, request);
       }
 

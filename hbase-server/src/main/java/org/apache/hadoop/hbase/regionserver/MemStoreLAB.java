@@ -112,6 +112,7 @@ public interface MemStoreLAB {
   static MemStoreLAB newInstance(Configuration conf) {
     MemStoreLAB memStoreLAB = null;
     if (isEnabled(conf)) {
+      // TODO 注释： 启用了 MSLAB 技术， 默认实现是： MemStoreLABImpl
       String className = conf.get(MSLAB_CLASS_NAME, MemStoreLABImpl.class.getName());
       memStoreLAB = ReflectionUtils.instantiateWithCustomCtor(className,
         new Class[] { Configuration.class }, new Object[] { conf });

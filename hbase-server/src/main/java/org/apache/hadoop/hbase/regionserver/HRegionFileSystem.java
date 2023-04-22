@@ -965,6 +965,7 @@ public class HRegionFileSystem {
    * @param useTempDir indicate whether or not using the region .tmp dir for a safer file creation.
    */
   private void writeRegionInfoOnFilesystem(boolean useTempDir) throws IOException {
+    // TODO 注释： 获取要写入的内容
     byte[] content = getRegionInfoFileContent(regionInfoForFs);
     writeRegionInfoOnFilesystem(content, useTempDir);
   }
@@ -977,13 +978,14 @@ public class HRegionFileSystem {
    */
   private void writeRegionInfoOnFilesystem(final byte[] regionInfoContent, final boolean useTempDir)
     throws IOException {
+    // TODO 注释： regionDir + /.regioninfo
     Path regionInfoFile = new Path(getRegionDir(), REGION_INFO_FILE);
     if (useTempDir) {
       // Create in tmpDir and then move into place in case we crash after
       // create but before close. If we don't successfully close the file,
       // subsequent region reopens will fail the below because create is
       // registered in NN.
-
+      // TODO 注释： regionDir/.tmp
       // And then create the file
       Path tmpPath = new Path(getTempDir(), REGION_INFO_FILE);
 
@@ -996,14 +998,21 @@ public class HRegionFileSystem {
       }
 
       // Write HRI to a file in case we need to recover hbase:meta
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： 将 regionInfoContent 的信息，写入到 regionDir/.tmp 临时文件
+       */
       writeRegionInfoFileContent(conf, fs, tmpPath, regionInfoContent);
 
       // Move the created file to the original path
+      // TODO 注释： 然后写成功了之后，重命名过来
+      // TODO 注释： tmpPath ===> regionInfoFile
       if (fs.exists(tmpPath) && !rename(tmpPath, regionInfoFile)) {
         throw new IOException("Unable to rename " + tmpPath + " to " + regionInfoFile);
       }
     } else {
       // Write HRI to a file in case we need to recover hbase:meta
+      // TODO 注释： 直接写入内容 regionInfoContent 到 regionDir/.regioninfo 文件
       writeRegionInfoFileContent(conf, fs, regionInfoFile, regionInfoContent);
     }
   }
@@ -1018,21 +1027,30 @@ public class HRegionFileSystem {
    */
   public static HRegionFileSystem createRegionOnFileSystem(final Configuration conf,
     final FileSystem fs, final Path tableDir, final RegionInfo regionInfo) throws IOException {
+    // TODO 注释： 将该 region 相关的 文件系统的信息，封装成 HRegionFileSystem
     HRegionFileSystem regionFs = new HRegionFileSystem(conf, fs, tableDir, regionInfo);
 
     // We only create a .regioninfo and the region directory if this is the default region replica
     if (regionInfo.getReplicaId() == RegionInfo.DEFAULT_REPLICA_ID) {
+      // TODO 注释： regionDir = /rootDir/data/namespace/tableName/regionDir
       Path regionDir = regionFs.getRegionDir();
       if (fs.exists(regionDir)) {
         LOG.warn("Trying to create a region that already exists on disk: " + regionDir);
       } else {
         // Create the region directory
+        // TODO 注释： 创建 region 在 HDFS 的目录
         if (!createDirOnFileSystem(fs, conf, regionDir)) {
           LOG.warn("Unable to create the region directory: " + regionDir);
           throw new IOException("Unable to create region directory: " + regionDir);
         }
       }
-
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释：
+       *  注意参数：
+       *  1、如果为 false，表示不适用临时文件，而是直接写最终目标文件
+       *  2、如果为 true，则表示先写入数据到临时文件 regionDir/.tmp 然后重命名为 /regionDir/.regioninfo
+       */
       // Write HRI to a file in case we need to recover hbase:meta
       regionFs.writeRegionInfoOnFilesystem(false);
     } else {
@@ -1147,6 +1165,7 @@ public class HRegionFileSystem {
     int i = 0;
     do {
       try {
+        //todo rename
         return fs.rename(srcpath, dstPath);
       } catch (IOException ioe) {
         lastIOE = ioe;
