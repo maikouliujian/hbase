@@ -80,6 +80,7 @@ public abstract class RegionSplitPolicy extends Configured {
     byte[] splitPointFromLargestStore = null;
     long largestStoreSize = 0;
     for (HStore s : stores) {
+      //todo 寻找每一个store的中界值
       Optional<byte[]> splitPoint = s.getSplitPoint();
       // Store also returns null if it has references as way of indicating it is not splittable
       long storeSize = s.getSize();

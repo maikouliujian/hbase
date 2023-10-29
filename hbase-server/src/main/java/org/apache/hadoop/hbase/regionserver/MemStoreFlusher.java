@@ -67,6 +67,7 @@ class MemStoreFlusher implements FlushRequester {
   private Configuration conf;
   // These two data members go together. Any entry in the one must have
   // a corresponding entry in the other.
+  // todo Flush 队列，FlushQueueEntry 每需要执行一次 flush 的时候，就会提交一个 FlushQueueEntry 到 flushQueue
   private final BlockingQueue<FlushQueueEntry> flushQueue = new DelayQueue<>();
   private final Map<Region, FlushRegionEntry> regionsInQueue = new HashMap<>();
   private AtomicBoolean wakeupPending = new AtomicBoolean();
@@ -78,7 +79,7 @@ class MemStoreFlusher implements FlushRequester {
 
   private long blockingWaitTime;
   private final LongAdder updatesBlockedMsHighWater = new LongAdder();
-
+  // todo 负责消费 flushQueue 队列的 Flush 线程
   private final FlushHandler[] flushHandlers;
   private List<FlushRequestListener> flushRequestListeners = new ArrayList<>(1);
 
@@ -310,6 +311,7 @@ class MemStoreFlusher implements FlushRequester {
         FlushQueueEntry fqe = null;
         try {
           wakeupPending.set(false); // allow someone to wake us up again
+          //todo 消费队列中的数据
           fqe = flushQueue.poll(threadWakeFrequency, TimeUnit.MILLISECONDS);
           if (fqe == null || fqe == WAKEUPFLUSH_INSTANCE) {
             FlushType type = isAboveLowWaterMark();
@@ -337,6 +339,7 @@ class MemStoreFlusher implements FlushRequester {
             continue;
           }
           FlushRegionEntry fre = (FlushRegionEntry) fqe;
+          //todo 执行flush
           if (!flushRegion(fre)) {
             break;
           }
@@ -442,6 +445,7 @@ class MemStoreFlusher implements FlushRequester {
         // This entry has no delay so it will be added at the top of the flush
         // queue. It'll come out near immediately.
         FlushRegionEntry fqe = new FlushRegionEntry(r, families, tracker);
+        //todo 加入队列
         this.regionsInQueue.put(r, fqe);
         this.flushQueue.add(fqe);
         r.incrementFlushesQueuedCount();
@@ -536,8 +540,10 @@ class MemStoreFlusher implements FlushRequester {
           LOG.warn("{} has too many store files({}); delaying flush up to {} ms",
             region.getRegionInfo().getEncodedName(), getStoreFileCount(region),
             this.blockingWaitTime);
+          //todo 执行split操作
           if (!this.server.compactSplitThread.requestSplit(region)) {
             try {
+              //todo 执行compact
               this.server.compactSplitThread.requestSystemCompaction(region,
                 Thread.currentThread().getName());
             } catch (IOException e) {
@@ -555,6 +561,7 @@ class MemStoreFlusher implements FlushRequester {
         return true;
       }
     }
+    //todo 执行flush
     return flushRegion(region, false, fqe.families, fqe.getTracker());
   }
 
@@ -584,13 +591,24 @@ class MemStoreFlusher implements FlushRequester {
     tracker.beforeExecution();
     lock.readLock().lock();
     try {
+      //todo 通知监听器
       notifyFlushRequest(region, emergencyFlush);
+      //todo 执行flush，执行flush结束后，必然多了一个hfile格式的文件
       FlushResult flushResult = region.flushcache(families, false, tracker);
+      //TODO 是否可以执行compact
       boolean shouldCompact = flushResult.isCompactionNeeded();
       // We just want to check the size
       boolean shouldSplit = region.checkSplit().isPresent();
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： 如果满足 split 条件，则执行 split
+       */
       if (shouldSplit) {
         this.server.compactSplitThread.requestSplit(region);
+        /*************************************************
+         * TODO 马中华 https://blog.csdn.net/zhongqi2513
+         *  注释： 如果满足 compact 条件，则执行 compact
+         */
       } else if (shouldCompact) {
         server.compactSplitThread.requestSystemCompaction(region, Thread.currentThread().getName());
       }

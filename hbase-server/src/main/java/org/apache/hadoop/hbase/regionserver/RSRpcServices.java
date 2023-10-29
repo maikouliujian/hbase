@@ -660,6 +660,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler, AdminService.Blockin
           result = region.getCoprocessorHost().preCheckAndMutate(checkAndMutate);
         }
         if (result == null) {
+          //todo
           result = region.checkAndMutate(checkAndMutate, nonceGroup, nonce);
           if (region.getCoprocessorHost() != null) {
             result = region.getCoprocessorHost().postCheckAndMutate(checkAndMutate, result);
@@ -1005,7 +1006,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler, AdminService.Blockin
       if (!atomic) {
         Arrays.sort(mArray, (v1, v2) -> Row.COMPARATOR.compare(v1, v2));
       }
-
+      //todo 向region写入数据
       OperationStatus[] codes = region.batchMutate(mArray, atomic, nonceGroup, nonce);
 
       // When atomic is true, it indicates that the mutateRow API or the batch API with
@@ -2684,15 +2685,17 @@ public class RSRpcServices implements HBaseRPCErrorHandler, AdminService.Blockin
    * @param rpcc    the RPC controller
    * @param request the multi request
    */
+  //todo 来自于client的rpc请求
   @Override
   public MultiResponse multi(final RpcController rpcc, final MultiRequest request)
     throws ServiceException {
     try {
+      //todo
       checkOpen();
     } catch (IOException ie) {
       throw new ServiceException(ie);
     }
-
+    //todo 一批次的action不能大于5000
     checkBatchSizeAndLogLargeSize(request);
 
     // rpc controller is how we bring in data via the back door; it is unprotobuf'ed data.
@@ -2740,6 +2743,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler, AdminService.Blockin
       }
 
       try {
+        //todo
         CheckAndMutateResult result = checkAndMutate(region, regionAction.getActionList(),
           cellScanner, request.getCondition(), nonceGroup, spaceQuotaEnforcement);
         responseBuilder.setProcessed(result.isSuccess());
@@ -2791,6 +2795,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler, AdminService.Blockin
       }
 
       try {
+        //todo 条件操作！！！
         if (regionAction.hasCondition()) {
           try {
             ClientProtos.ResultOrException.Builder resultOrExceptionOrBuilder =
@@ -2830,6 +2835,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler, AdminService.Blockin
             // As it's an atomic operation with a condition, we may expect it's a global failure.
             regionActionResultBuilder.setException(ResponseConverter.buildException(e));
           }
+          //todo 原子操作！！！
         } else if (regionAction.hasAtomic() && regionAction.getAtomic()) {
           try {
             doAtomicBatchOp(regionActionResultBuilder, region, quota, regionAction.getActionList(),
@@ -2843,6 +2849,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler, AdminService.Blockin
             // As it's atomic, we may expect it's a global failure.
             regionActionResultBuilder.setException(ResponseConverter.buildException(e));
           }
+          //todo 非原子操作！！！
         } else {
           // doNonAtomicRegionMutation manages the exception internally
           if (context != null && closeCallBack == null) {

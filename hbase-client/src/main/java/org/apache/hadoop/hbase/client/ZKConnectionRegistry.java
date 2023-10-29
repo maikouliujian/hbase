@@ -57,7 +57,7 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.ZooKeeperProtos;
 class ZKConnectionRegistry implements ConnectionRegistry {
 
   private static final Logger LOG = LoggerFactory.getLogger(ZKConnectionRegistry.class);
-
+  //todo zk的只读客户端
   private final ReadOnlyZKClient zk;
 
   private final ZNodePaths znodePaths;
@@ -110,6 +110,7 @@ class ZKConnectionRegistry implements ConnectionRegistry {
     }
     data = removeMetaData(data);
     int prefixLen = lengthOfPBMagic();
+    //todo 字节数组转化为pb对象
     return ZooKeeperProtos.MetaRegionServer.parser().parseFrom(data, prefixLen,
       data.length - prefixLen);
   }
@@ -138,6 +139,7 @@ class ZKConnectionRegistry implements ConnectionRegistry {
 
   private void getMetaRegionLocation(CompletableFuture<RegionLocations> future,
     List<String> metaReplicaZNodes) {
+    // TODO 注释： 如果 metaReplicaZNodes 集合为空，证明没有 meta znode 节点
     if (metaReplicaZNodes.isEmpty()) {
       future.completeExceptionally(new IOException("No meta znode available"));
     }
@@ -148,11 +150,20 @@ class ZKConnectionRegistry implements ConnectionRegistry {
     // Map sorts just to be kind to further processing. The Map will retain the discontinuity on
     // replicaIds but on completion (of the future), the Map values are passed to the
     // RegionLocations constructor which knows how to deal with discontinuities.
+    // TODO 注释： 用来保存获取到的 meta region 的位置信息
     final Map<Integer, HRegionLocation> locs = new TreeMap<>();
     MutableInt remaining = new MutableInt(metaReplicaZNodes.size());
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 遍历每个 meta znode 节点
+     */
     for (String metaReplicaZNode : metaReplicaZNodes) {
+      // TODO 注释： 读取 meta 的 replicaId
       int replicaId = znodePaths.getMetaReplicaIdFromZNode(metaReplicaZNode);
+      // TODO 注释： 拼接得到其中一个 meta znode 节点的完整路径
       String path = ZNodePaths.joinZNode(znodePaths.baseZNode, metaReplicaZNode);
+      // TODO 注释： 然后去读取 znode 的数据
+      // TODO 注释： 第一个分支，表示只有一个 meta region
       if (replicaId == DEFAULT_REPLICA_ID) {
         addListener(getAndConvert(path, ZKConnectionRegistry::getMetaProto), (proto, error) -> {
           if (error != null) {
@@ -163,12 +174,19 @@ class ZKConnectionRegistry implements ConnectionRegistry {
             future.completeExceptionally(new IOException("Meta znode is null"));
             return;
           }
+          // TODO 注释： 获取 meta region 的状态 和 ServerName 也就是存储在哪个 RegionServer 的位置信息
           Pair<RegionState.State, ServerName> stateAndServerName = getStateAndServerName(proto);
           if (stateAndServerName.getFirst() != RegionState.State.OPEN) {
             LOG.warn("Meta region is in state " + stateAndServerName.getFirst());
           }
+          /*************************************************
+           * TODO 马中华 https://blog.csdn.net/zhongqi2513
+           *  注释： 将 meta region 的位置信息存储起来
+           */
           locs.put(replicaId, new HRegionLocation(
+            // TODO 注释： 第一个参数： RegionInfo，// TODO 注释： 第二个参数： ServerName
             getRegionInfoForDefaultReplica(FIRST_META_REGIONINFO), stateAndServerName.getSecond()));
+          // TODO 注释： 设置返回值
           tryComplete(remaining, locs.values(), future);
         });
       } else {
@@ -203,14 +221,20 @@ class ZKConnectionRegistry implements ConnectionRegistry {
   @Override
   public CompletableFuture<RegionLocations> getMetaRegionLocations() {
     CompletableFuture<RegionLocations> future = new CompletableFuture<>();
+    // TODO 注释： 从 ZooKeeper 上遍历出来 /hbase znode 节点下 meta-region-server 开头的 子 znode 节点
+    // TODO 注释： baseZNode = /hbase
     addListener(
+      // TODO 注释： 第一个参数
       zk.list(znodePaths.baseZNode).thenApply(children -> children.stream()
+        //todo 过滤出： meta-region-server
         .filter(c -> this.znodePaths.isMetaZNodePrefix(c)).collect(Collectors.toList())),
+      // TODO 注释： 第二个参数
       (metaReplicaZNodes, error) -> {
         if (error != null) {
           future.completeExceptionally(error);
           return;
         }
+        // TODO 注释： 获取 znode 节点上的数据
         getMetaRegionLocation(future, metaReplicaZNodes);
       });
     return future;

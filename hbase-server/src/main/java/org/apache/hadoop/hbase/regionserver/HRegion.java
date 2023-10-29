@@ -2279,6 +2279,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
           // We no longer need to cancel the request on the way out of this
           // method because Store#compact will clean up unconditionally
           requestNeedsCancellation = false;
+          //todo 执行compact！！！！！！
           store.compact(compaction, throughputController, user);
         } catch (InterruptedIOException iioe) {
           String msg = "region " + this + " compaction interrupted";
@@ -2379,6 +2380,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
    *                                  not properly persisted. The region is put in closing mode, and
    *                                  the caller MUST abort after this.
    */
+  //todo 执行flush
   public FlushResultImpl flushcache(List<byte[]> families, boolean writeFlushRequestWalMarker,
     FlushLifeCycleTracker tracker) throws IOException {
     // fail-fast instead of waiting on the lock
@@ -2428,11 +2430,13 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
         // caused by logRoller, we should select stores which must be flushed
         // rather than could be flushed.
         Collection<HStore> specificStoresToFlush = null;
+        //todo 获取要执行flush的store
         if (families != null) {
           specificStoresToFlush = getSpecificStores(families);
         } else {
           specificStoresToFlush = flushPolicy.selectStoresToFlush();
         }
+        //todo 针对store的集合进行flush
         FlushResultImpl fs =
           internalFlushcache(specificStoresToFlush, status, writeFlushRequestWalMarker, tracker);
 
@@ -2564,6 +2568,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
    */
   private FlushResultImpl internalFlushcache(Collection<HStore> storesToFlush, MonitoredTask status,
     boolean writeFlushWalMarker, FlushLifeCycleTracker tracker) throws IOException {
+    //todo 执行flush
     return internalFlushcache(this.wal, HConstants.NO_SEQNUM, storesToFlush, status,
       writeFlushWalMarker, tracker);
   }
@@ -2589,9 +2594,11 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
   protected FlushResultImpl internalFlushcache(WAL wal, long myseqid,
     Collection<HStore> storesToFlush, MonitoredTask status, boolean writeFlushWalMarker,
     FlushLifeCycleTracker tracker) throws IOException {
+    //todo 1）准备阶段
     PrepareFlushResult result =
       internalPrepareFlushCache(wal, myseqid, storesToFlush, status, writeFlushWalMarker, tracker);
     if (result.result == null) {
+      //todo 2）flush和commit提交阶段
       return internalFlushCacheAndCommit(wal, status, result, storesToFlush);
     } else {
       return result.result; // early exit due to failure from prepare stage
@@ -2701,6 +2708,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       }
 
       for (HStore s : storesToFlush) {
+        //todo storeFlushCtxs进行赋值
         storeFlushCtxs.put(s.getColumnFamilyDescriptor().getName(),
           s.createFlushContext(flushOpSeqId, tracker));
         // for writing stores to WAL
@@ -2718,6 +2726,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
 
       // Prepare flush (take a snapshot)
       storeFlushCtxs.forEach((name, flush) -> {
+        //todo prepare()
         MemStoreSize snapshotSize = flush.prepare();
         totalSizeOfFlushableStores.incMemStoreSize(snapshotSize);
         storeFlushableSize.put(name, snapshotSize);
@@ -2848,7 +2857,8 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       // Keep running vector of all store files that includes both old and the
       // just-made new flush store file. The new flushed file is still in the
       // tmp directory.
-
+      //todo 将每一个store执行flush
+      //todo 将prepare阶段产生的snapshot持久化为临时文件，临时文件在.tmp下
       for (StoreFlushContext flush : storeFlushCtxs.values()) {
         flush.flushCache(status);
       }
@@ -2857,7 +2867,9 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       // all the store scanners to reset/reseek).
       for (Map.Entry<byte[], StoreFlushContext> flushEntry : storeFlushCtxs.entrySet()) {
         StoreFlushContext sfc = flushEntry.getValue();
+        //todo 真正commit，将.tmp下的文件移动到各自的cf目录下
         boolean needsCompaction = sfc.commit(status);
+        //todo 是否执行Compaction
         if (needsCompaction) {
           compactionRequested = true;
         }
@@ -3286,7 +3298,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     public abstract WriteEntry writeMiniBatchOperationsToMemStore(
       final MiniBatchOperationInProgress<Mutation> miniBatchOp, final WriteEntry writeEntry)
       throws IOException;
-
+    //todo
     protected void writeMiniBatchOperationsToMemStore(
       final MiniBatchOperationInProgress<Mutation> miniBatchOp, final long writeNumber)
       throws IOException {
@@ -3299,6 +3311,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
         if (isInReplay() || getMutation(index).getDurability() == Durability.SKIP_WAL) {
           region.updateSequenceId(familyCellMaps[index].values(), writeNumber);
         }
+        //todo 将数据写入store
         applyFamilyMapToMemStore(familyCellMaps[index], memStoreAccounting);
         return true;
       });
@@ -3534,8 +3547,10 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
               || curWALEditForNonce.getFirst().getNonceGroup() != nonceGroup
               || curWALEditForNonce.getFirst().getNonce() != nonce
           ) {
+            //todo 一个WALEdit中包含了一批的cell对象
             curWALEditForNonce = new Pair<>(new NonceKey(nonceGroup, nonce),
               new WALEdit(miniBatchOp.getCellCount(), isInReplay()));
+            //todo 操作日志加入容器中
             walEdits.add(curWALEditForNonce);
           }
           WALEdit walEdit = curWALEditForNonce.getSecond();
@@ -3614,6 +3629,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
         byte[] family = e.getKey();
         List<Cell> cells = e.getValue();
         assert cells instanceof RandomAccess;
+        //todo
         region.applyToMemStore(region.getStore(family), cells, false, memstoreAccounting);
       }
     }
@@ -3747,6 +3763,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       visitBatchOperations(true, miniBatchOp.getLastIndexExclusive(), (int index) -> {
         Mutation mutation = getMutation(index);
         if (mutation instanceof Put) {
+          //todo 更新时间戳
           HRegion.updateCellTimestamps(familyCellMaps[index].values(), Bytes.toBytes(timestamp));
           miniBatchOp.incrementNumOfPuts();
         } else if (mutation instanceof Delete) {
@@ -4056,6 +4073,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       if (writeEntry == null) {
         writeEntry = region.mvcc.begin();
       }
+      //todo
       super.writeMiniBatchOperationsToMemStore(miniBatchOp, writeEntry.getWriteNumber());
       return writeEntry;
     }
@@ -4393,6 +4411,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     // checkAndMutate.
     // * coprocessor calls (see ex. BulkDeleteEndpoint).
     // So nonces are not really ever used by HBase. They could be by coprocs, and checkAnd...
+    //todo 批量写入
     return batchMutate(new MutationBatchOperation(this, mutations, atomic, nonceGroup, nonce));
   }
 
@@ -4463,7 +4482,17 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
           batchOp.checkAndPrepare();
           initialized = true;
         }
+        /*************************************************
+         * TODO 马中华 https://blog.csdn.net/zhongqi2513
+         *  注释： 执行数据写入
+         *  todo 1、将数据写入wal
+         *  todo 2、将数据写入memstore
+         */
         doMiniBatchMutate(batchOp);
+        /*************************************************
+         * TODO 马中华 https://blog.csdn.net/zhongqi2513
+         *  注释： 判断是否需要进行 flush
+         */
         requestFlushIfNeeded();
       }
     } finally {
@@ -4481,6 +4510,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
    * also handle replay of edits on region recover. Also gets change in size brought about by
    * applying {@code batchOp}.
    */
+  //todo 写入数据的最终实现
   private void doMiniBatchMutate(BatchOperation<?> batchOp) throws IOException {
     boolean success = false;
     WALEdit walEdit = null;
@@ -4496,6 +4526,10 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     checkInterrupt();
 
     try {
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： 第一步：尝试获取尽可能多的行锁
+       */
       // STEP 1. Try to acquire as many locks as we can and build mini-batch of operations with
       // locked rows
       miniBatchOp = batchOp.lockRowsAndBuildMiniBatch(acquiredRowLocks);
@@ -4523,22 +4557,29 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       // We should record the timestamp only after we have acquired the rowLock,
       // otherwise, newer puts/deletes/increment/append are not guaranteed to have a newer
       // timestamp
-
+      // todo 第二步：更新时间戳
+      // todo 时间戳的更新是在行锁之内，意味着，较新的请求，必然有用更大的时间戳
       long now = EnvironmentEdgeManager.currentTime();
       batchOp.prepareMiniBatchOperations(miniBatchOp, now, acquiredRowLocks);
 
       // STEP 3. Build WAL edit
-
+      // todo 第三步：将这一批次 Cell 按照 Nonce 信息，构建成多个 WALEdit 分组
+      // todo 其实可以这么说：并不是一条 Cell 一条日志，而是一堆 Cell 一条日志
       List<Pair<NonceKey, WALEdit>> walEdits = batchOp.buildWALEdits(miniBatchOp);
 
       // STEP 4. Append the WALEdits to WAL and sync.
+      // todo 按照 NonceKey 作为条件，把这一个批次中的 Put 数据分割成多个 WALEdit
+      // todo 写操作日志记录： wal.append(key, value)
 
+      // todo 第四步：将一批次数据对应的操作日志记录下来
+      // todo key = WALKeyImpl, value = WALEdit
       for (Iterator<Pair<NonceKey, WALEdit>> it = walEdits.iterator(); it.hasNext();) {
         Pair<NonceKey, WALEdit> nonceKeyWALEditPair = it.next();
         walEdit = nonceKeyWALEditPair.getSecond();
         NonceKey nonceKey = nonceKeyWALEditPair.getFirst();
 
         if (walEdit != null && !walEdit.isEmpty()) {
+          // TODO 注释： 写入日志
           writeEntry = doWALAppend(walEdit, batchOp.durability, batchOp.getClusterIds(), now,
             nonceKey.getNonceGroup(), nonceKey.getNonce(), batchOp.getOrigLogSeqNum());
         }
@@ -4552,12 +4593,15 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
 
       // STEP 5. Write back to memStore
       // NOTE: writeEntry can be null here
+      // todo 第五步：将数据写入到 MemStore
       writeEntry = batchOp.writeMiniBatchOperationsToMemStore(miniBatchOp, writeEntry);
 
       // STEP 6. Complete MiniBatchOperations: If required calls postBatchMutate() CP hook and
       // complete mvcc for last writeEntry
+      // todo 第六步：MVCC 结束
       batchOp.completeMiniBatchOperations(miniBatchOp, writeEntry);
       writeEntry = null;
+      // todo 第七步：标记成功
       success = true;
     } finally {
       // Call complete rather than completeAndWait because we probably had error if walKey != null
@@ -4566,6 +4610,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       if (locked) {
         this.updatesLock.readLock().unlock();
       }
+      // todo 第八步：释放行锁
       releaseRowLocks(acquiredRowLocks);
 
       enableInterrupts();
@@ -4678,9 +4723,10 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
   public CheckAndMutateResult checkAndMutate(CheckAndMutate checkAndMutate) throws IOException {
     return checkAndMutate(checkAndMutate, HConstants.NO_NONCE, HConstants.NO_NONCE);
   }
-
+   //todo 插入数据的逻辑
   public CheckAndMutateResult checkAndMutate(CheckAndMutate checkAndMutate, long nonceGroup,
     long nonce) throws IOException {
+    //todo rowkey
     byte[] row = checkAndMutate.getRow();
     Filter filter = null;
     byte[] family = null;
@@ -4711,11 +4757,16 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     } else {
       checkRow(rowMutations, row);
     }
+    //todo 做检查
     checkReadOnly();
     // TODO, add check for value length also move this check to the client
+    //todo 检查资源使用量
     checkResources();
+    //todo 1、获取读锁
     startRegionOperation();
     try {
+      //todo 2、读取数据
+      //todo 插入数据前为何先查询，因为插入的rowkey有可能存在！！！
       Get get = new Get(row);
       if (family != null) {
         checkFamily(family);
@@ -4729,6 +4780,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       }
       // Lock row - note that doBatchMutate will relock this row if called
       checkRow(row, "doCheckAndRowMutate");
+      //todo 3、获取行锁（读锁）
       RowLock rowLock = getRowLockInternal(get.getRow(), false, null);
       try {
         if (this.getCoprocessorHost() != null) {
@@ -4744,10 +4796,12 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
         // we'll get the latest on this row.
         boolean matches = false;
         long cellTs = 0;
+        //todo 4、获取数据
         try (RegionScanner scanner = getScanner(new Scan(get))) {
           // NOTE: Please don't use HRegion.get() instead,
           // because it will copy cells to heap. See HBASE-26036
           List<Cell> result = new ArrayList<>(1);
+          //todo 将数据添加到result中
           scanner.next(result);
           if (filter != null) {
             if (!result.isEmpty()) {
@@ -4782,6 +4836,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
           byte[] byteTs = Bytes.toBytes(ts);
           if (mutation != null) {
             if (mutation instanceof Put) {
+              //todo 更新时间戳
               updateCellTimestamps(mutation.getFamilyCellMap().values(), byteTs);
             }
             // And else 'delete' is not needed since it already does a second get, and sets the
@@ -4798,6 +4853,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
           // All edits for the given row (across all column families) must happen atomically.
           Result r;
           if (mutation != null) {
+            //todo 5、更新数据
             r = doBatchMutate(mutation, true, nonceGroup, nonce).getResult();
           } else {
             r = mutateRow(rowMutations, nonceGroup, nonce);
@@ -4808,9 +4864,11 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
         this.checkAndMutateChecksFailed.increment();
         return new CheckAndMutateResult(false, null);
       } finally {
+        //todo 6、释放行锁
         rowLock.release();
       }
     } finally {
+      //todo 7、释放读锁
       closeRegionOperation();
     }
   }
@@ -4868,6 +4926,10 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
 
   private OperationStatus doBatchMutate(Mutation mutation, boolean atomic, long nonceGroup,
     long nonce) throws IOException {
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释：
+     */
     OperationStatus[] batchMutate =
       this.batchMutate(new Mutation[] { mutation }, atomic, nonceGroup, nonce);
     if (batchMutate[0].getOperationStatusCode().equals(OperationStatusCode.SANITY_CHECK_FAILURE)) {
@@ -4960,8 +5022,9 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
   void checkResources() throws RegionTooBusyException {
     // If catalog region, do not impose resource constraints or block updates.
     if (this.getRegionInfo().isMetaRegion()) return;
-
+    //todo 获取memstore的大小
     MemStoreSize mss = this.memStoreSizing.getMemStoreSize();
+    //todo 检测当region内存使用达到128m * 4时进行flush刷写
     if (mss.getHeapSize() + mss.getOffHeapSize() > this.blockingMemStoreSize) {
       blockedRequestsCount.increment();
       requestFlush();
@@ -6491,6 +6554,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
           }
           result = rowLockContext.newReadLock();
         } else {
+          //todo 获取写锁
           result = rowLockContext.newWriteLock();
         }
       }
@@ -8473,6 +8537,11 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     // Using default cluster id, as this can only happen in the originating cluster.
     // A slave cluster receives the final value (not the delta) as a Put. We use HLogKey
     // here instead of WALKeyImpl directly to support legacy coprocessors.
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释：
+     */
+    //todo 步骤1：构建WALKeyImpl【regionname 、 table name】
     WALKeyImpl walKey = walEdit.isReplay()
       ? new WALKeyImpl(this.getRegionInfo().getEncodedNameAsBytes(),
         this.htableDescriptor.getTableName(), SequenceId.NO_SEQUENCE_ID, now, clusterIds,
@@ -8490,9 +8559,11 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     }
     WriteEntry writeEntry = null;
     try {
+      //todo 步骤2：追加写，但是未flush【日志格式为hdfs sequence格式，需要key value】,txid日志的唯一id
       long txid = this.wal.appendData(this.getRegionInfo(), walKey, walEdit);
       // Call sync on our edit.
       if (txid != 0) {
+        //todo 步骤3：根据日志级别来落盘
         sync(txid, durability);
       }
       writeEntry = walKey.getWriteEntry();
@@ -8648,7 +8719,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
 
     return responseBuilder.build();
   }
-
+  //todo checkSplit()
   public Optional<byte[]> checkSplit() {
     return checkSplit(false);
   }
@@ -8669,11 +8740,11 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     if (this.isClosing()) {
       return Optional.empty();
     }
-
+    //todo 是否执行split
     if (!force && !splitPolicy.shouldSplit()) {
       return Optional.empty();
     }
-
+    //todo 1、先找到这个region中最大的hflie;2、从这个最大的hfile中来寻找中间分割点
     byte[] ret = splitPolicy.getSplitPoint();
     if (ret != null && ret.length > 0) {
       ret = splitRestriction.getRestrictedSplitPoint(ret);
@@ -8681,6 +8752,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
 
     if (ret != null) {
       try {
+        //todo check
         checkRow(ret, "calculated split");
       } catch (IOException e) {
         LOG.error("Ignoring invalid split for region {}", this, e);
@@ -8748,6 +8820,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     if (this.closing.get()) {
       throw new NotServingRegionException(getRegionInfo().getRegionNameAsString() + " is closing");
     }
+    //todo 获取读锁
     lock(lock.readLock());
     // Update regionLockHolders ONLY for any startRegionOperation call that is invoked from
     // an RPC handler
@@ -8896,6 +8969,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
    * @throws IOException If anything goes wrong with DFS
    */
   private void sync(long txid, Durability durability) throws IOException {
+    //todo 如果是meta表，直接马上同步！！！
     if (this.getRegionInfo().isMetaRegion()) {
       this.wal.sync(txid);
     } else {
@@ -9165,7 +9239,9 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
   }
 
   private void requestFlushIfNeeded() throws RegionTooBusyException {
+    //todo memStore内存大小大于100m，执行flush
     if (isFlushSize(this.memStoreSizing.getMemStoreSize())) {
+      //todo
       requestFlush();
     }
   }
@@ -9187,6 +9263,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     }
     if (shouldFlush) {
       // Make request outside of synchronize block; HBASE-818.
+      //todo 提交flush给MemStoreFlusher
       this.rsServices.getFlushRequester().requestFlush(this, tracker);
       if (LOG.isDebugEnabled()) {
         LOG.debug("Flush requested on " + this.getRegionInfo().getEncodedName());

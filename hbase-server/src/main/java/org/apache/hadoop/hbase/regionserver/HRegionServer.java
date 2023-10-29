@@ -2516,6 +2516,7 @@ public class HRegionServer extends Thread
     if (TEST_SKIP_REPORTING_TRANSITION) {
       return skipReportingTransition(context);
     }
+    //todo 构建请求对象
     final ReportRegionStateTransitionRequest request =
       createReportRegionStateTransitionRequest(context);
 
@@ -2530,9 +2531,11 @@ public class HRegionServer extends Thread
       RegionServerStatusService.BlockingInterface rss = rssStub;
       try {
         if (rss == null) {
+          //todo 建立和hmaster之间的rpc链接
           createRegionServerStatusStub();
           continue;
         }
+        //todo 发送rpc请求，进入MasterRpcServices
         ReportRegionStateTransitionResponse response =
           rss.reportRegionStateTransition(null, request);
         if (response.hasErrorMessage()) {

@@ -41,6 +41,7 @@ public class NoneEncoder {
     // We write tags seperately because though there is no tag in KV
     // if the hfilecontext says include tags we need the tags length to be
     // written
+    //todo 通过out流写入
     int size = KeyValueUtil.oswrite(cell, out, false);
     // Write the additional tag into the stream
     if (encodingCtx.getHFileContext().isIncludesTags()) {

@@ -199,7 +199,16 @@ public class RpcRetryingCallerImpl<T> implements RpcRetryingCaller<T> {
     throws IOException, RuntimeException {
     // The code of this method should be shared with withRetries.
     try {
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： 完成链接，获取 RPC 客户端
+       */
       callable.prepare(false);
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： RegionServerCallable
+       *  发送请求
+       */
       return callable.call(callTimeout);
     } catch (Throwable t) {
       Throwable t2 = translateException(t);

@@ -760,6 +760,7 @@ public class HStore
         LOG.trace("tableName={}, encodedName={}, columnFamilyName={} is too busy!",
           this.getTableName(), this.getRegionInfo().getEncodedName(), this.getColumnFamilyName());
       }
+      //todo 向store中写入cells
       memstore.add(cells, memstoreSizing);
     } finally {
       lock.readLock().unlock();
@@ -1019,9 +1020,11 @@ public class HStore
     // itself
     StoreFlusher flusher = storeEngine.getStoreFlusher();
     IOException lastException = null;
+    //todo flushRetriesNumber 重试次数
     for (int i = 0; i < flushRetriesNumber; i++) {
       try {
         List<Path> pathNames =
+          //todo 执行flush
           flusher.flushSnapshot(snapshot, logCacheFlushId, status, throughputController, tracker);
         Path lastPathName = null;
         try {
@@ -1178,6 +1181,7 @@ public class HStore
     Encryption.Context encryptionContext = storeContext.getEncryptionContext();
     HFileContext hFileContext =
       createFileContext(compression, includeMVCCReadpoint, includesTag, encryptionContext);
+    //todo 临时文件
     Path familyTempDir = new Path(getRegionFileSystem().getTempDir(), getColumnFamilyName());
     StoreFileWriter.Builder builder =
       new StoreFileWriter.Builder(conf, writerCacheConf, getFileSystem())
@@ -1246,6 +1250,7 @@ public class HStore
         + storeSize + "," + storeEngine.getStoreFileManager().getStorefileCount() + "]";
       LOG.trace(traceMessage);
     }
+    //todo 判断是否compaction
     return needsCompaction();
   }
 
@@ -1467,6 +1472,7 @@ public class HStore
       // block below
       long compactionStartTime = EnvironmentEdgeManager.currentTime();
       assert compaction.hasSelection();
+      //todo 参与compact的hfiles
       Collection<HStoreFile> filesToCompact = cr.getFiles();
       assert !filesToCompact.isEmpty();
       synchronized (filesCompacting) {
@@ -1479,7 +1485,7 @@ public class HStore
       LOG.info("Starting compaction of " + filesToCompact + " into tmpdir="
         + getRegionFileSystem().getTempDir() + ", totalSize="
         + TraditionalBinaryPrefix.long2String(cr.getSize(), "", 1));
-
+      //todo compact！！！！！！
       return doCompaction(cr, filesToCompact, user, compactionStartTime,
         compaction.compact(throughputController, user));
     } finally {
@@ -2066,6 +2072,7 @@ public class HStore
         LOG.trace("Not splittable; has references: {}", this);
         return Optional.empty();
       }
+      //todo
       return this.storeEngine.getStoreFileManager().getSplitPoint();
     } catch (IOException e) {
       LOG.warn("Failed getting store size for {}", this, e);
@@ -2375,6 +2382,7 @@ public class HStore
     @Override
     public MemStoreSize prepare() {
       // passing the current sequence number of the wal - to allow bookkeeping in the memstore
+      //todo 执行snapshot操作
       this.snapshot = memstore.snapshot();
       this.cacheFlushCount = snapshot.getCellsCount();
       this.cacheFlushSize = snapshot.getDataSize();
@@ -2387,10 +2395,11 @@ public class HStore
       RegionServerServices rsService = region.getRegionServerServices();
       ThroughputController throughputController =
         rsService == null ? null : rsService.getFlushThroughputController();
+      //todo flush成tmp文件
       tempFiles =
         HStore.this.flushCache(cacheFlushSeqNum, snapshot, status, throughputController, tracker);
     }
-
+    //todo tempFiles是performFlush的结果
     @Override
     public boolean commit(MonitoredTask status) throws IOException {
       if (CollectionUtils.isEmpty(this.tempFiles)) {
@@ -2399,6 +2408,7 @@ public class HStore
       List<HStoreFile> storeFiles = new ArrayList<>(this.tempFiles.size());
       for (Path storeFilePath : tempFiles) {
         try {
+          //todo 将临时文件变为正式文件
           HStoreFile sf = HStore.this.commitFile(storeFilePath, cacheFlushSeqNum, status);
           outputFileSize += sf.getReader().length();
           storeFiles.add(sf);
@@ -2495,6 +2505,7 @@ public class HStore
     synchronized (filesCompacting) {
       filesCompactingClone = Lists.newArrayList(filesCompacting);
     }
+    //todo
     return this.storeEngine.needsCompaction(filesCompactingClone);
   }
 

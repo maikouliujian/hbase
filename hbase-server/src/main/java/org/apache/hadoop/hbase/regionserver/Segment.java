@@ -49,7 +49,7 @@ public abstract class Segment implements MemStoreSizing {
       + Bytes.SIZEOF_BOOLEAN); // tagsPresent
   public final static long DEEP_OVERHEAD = FIXED_OVERHEAD + ClassSize.ATOMIC_REFERENCE
     + ClassSize.CELL_SET + 2 * ClassSize.ATOMIC_LONG + ClassSize.REENTRANT_LOCK;
-
+  //todo
   private AtomicReference<CellSet> cellSet = new AtomicReference<>();
   private final CellComparator comparator;
   private ReentrantReadWriteLock updatesLock;
@@ -108,6 +108,7 @@ public abstract class Segment implements MemStoreSizing {
   }
 
   protected Segment(Segment segment) {
+    //todo 复制老segment的数据
     this.cellSet.set(segment.getCellSet());
     this.comparator = segment.getComparator();
     this.updatesLock = segment.getUpdatesLock();
@@ -300,6 +301,7 @@ public abstract class Segment implements MemStoreSizing {
 
   protected void internalAdd(Cell cell, boolean mslabUsed, MemStoreSizing memstoreSizing,
     boolean sizeAddedPreOperation) {
+    //todo 添加到cellset中
     boolean succ = getCellSet().add(cell);
     updateMetaInfo(cell, succ, mslabUsed, memstoreSizing, sizeAddedPreOperation);
   }

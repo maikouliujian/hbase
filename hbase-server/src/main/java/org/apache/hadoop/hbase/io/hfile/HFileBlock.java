@@ -864,6 +864,7 @@ public class HFileBlock implements Cacheable {
      */
     void write(Cell cell) throws IOException {
       expectState(State.WRITING);
+      //todo NoOpDataBlockEncoder
       this.dataBlockEncoder.encode(cell, dataBlockEncodingCtx, this.userDataStream);
     }
 

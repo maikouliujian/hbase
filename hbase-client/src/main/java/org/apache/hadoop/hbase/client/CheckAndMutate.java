@@ -217,7 +217,7 @@ public final class CheckAndMutate implements Row {
   public static Builder newBuilder(byte[] row) {
     return new Builder(row);
   }
-
+  //todo rowkey
   private final byte[] row;
   private final byte[] family;
   private final byte[] qualifier;

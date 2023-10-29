@@ -61,6 +61,11 @@ public class HRegionLocator implements RegionLocator {
   @Override
   public HRegionLocation getRegionLocation(byte[] row, int replicaId, boolean reload)
     throws IOException {
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释：
+     *  第三个参数：true
+     */
     return connection.locateRegion(tableName, row, !reload, true, replicaId)
       .getRegionLocation(replicaId);
   }

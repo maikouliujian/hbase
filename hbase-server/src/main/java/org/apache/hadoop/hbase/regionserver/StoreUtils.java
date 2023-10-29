@@ -118,6 +118,7 @@ public class StoreUtils {
     if (!optionalMidKey.isPresent()) {
       return Optional.empty();
     }
+    //todo 获取midKey
     Cell midKey = optionalMidKey.get();
     Cell firstKey = reader.getFirstKey().get();
     Cell lastKey = reader.getLastKey().get();
@@ -138,7 +139,9 @@ public class StoreUtils {
    */
   static Optional<byte[]> getSplitPoint(Collection<HStoreFile> storefiles,
     CellComparator comparator) throws IOException {
+    //todo 获取最大文件
     Optional<HStoreFile> largestFile = StoreUtils.getLargestFile(storefiles);
+    //todo 获取最大文件的中间界点
     return largestFile.isPresent()
       ? StoreUtils.getFileSplitPoint(largestFile.get(), comparator)
       : Optional.empty();

@@ -41,6 +41,7 @@ public class DefaultStoreFlusher extends StoreFlusher {
     super(conf, store);
   }
 
+  //todo flush写Snapshot
   @Override
   public List<Path> flushSnapshot(MemStoreSnapshot snapshot, long cacheFlushId,
     MonitoredTask status, ThroughputController throughputController, FlushLifeCycleTracker tracker)
@@ -50,6 +51,7 @@ public class DefaultStoreFlusher extends StoreFlusher {
     if (cellsCount == 0) return result; // don't flush if there are no entries
 
     // Use a store scanner to find which rows to flush.
+    //todo 构建scanner体系【核心】
     InternalScanner scanner = createScanner(snapshot.getScanners(), tracker);
     StoreFileWriter writer;
     try {
@@ -58,11 +60,13 @@ public class DefaultStoreFlusher extends StoreFlusher {
       synchronized (flushLock) {
         status.setStatus("Flushing " + store + ": creating writer");
         // Write the map out to the disk
+        //todo 构建storefilewriter，创建临时文件
         writer = store.createWriterInTmp(cellsCount,
           store.getColumnFamilyDescriptor().getCompressionType(), false, true,
           snapshot.isTagsPresent(), false);
         IOException e = null;
         try {
+          //todo 执行写入逻辑
           performFlush(scanner, writer, throughputController);
         } catch (IOException ioe) {
           e = ioe;
@@ -72,6 +76,7 @@ public class DefaultStoreFlusher extends StoreFlusher {
           if (e != null) {
             writer.close();
           } else {
+            //todo 写出hfile文件结构
             finalizeWriter(writer, cacheFlushId, status);
           }
         }

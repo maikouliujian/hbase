@@ -192,7 +192,9 @@ public class RatioBasedCompactionPolicy extends SortedCompactionPolicy {
   @Override
   public boolean needsCompaction(Collection<HStoreFile> storeFiles,
     List<HStoreFile> filesCompacting) {
+    //todo 总HStoreFile数 - 正在执行compact的HStoreFile
     int numCandidates = storeFiles.size() - filesCompacting.size();
+    //todo 大于等于3！！！！！！
     return numCandidates >= comConf.getMinFilesToCompact();
   }
 

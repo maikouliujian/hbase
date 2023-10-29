@@ -588,7 +588,7 @@ public class HFileWriterImpl implements HFile.Writer {
 
     finishBlock();
     writeInlineBlocks(true);
-
+    //todo 创建trailer【拖车，追踪者】
     FixedFileTrailer trailer = new FixedFileTrailer(getMajorVersion(), getMinorVersion());
 
     // Write out the metadata blocks if any.
@@ -718,7 +718,7 @@ public class HFileWriterImpl implements HFile.Writer {
     if (!blockWriter.isWriting()) {
       newBlock();
     }
-
+    //todo 写入
     blockWriter.write(cell);
 
     totalKeyLength += PrivateCellUtil.estimatedSerializedSizeOfKey(cell);

@@ -172,6 +172,7 @@ public class StoreFileWriter implements CellSink, ShipperListener {
    */
   public void appendMetadata(final long maxSequenceId, final boolean majorCompaction)
     throws IOException {
+    //todo 写了5条数据给元数据
     appendMetadata(maxSequenceId, majorCompaction, Collections.emptySet());
   }
 
@@ -281,6 +282,7 @@ public class StoreFileWriter implements CellSink, ShipperListener {
   public void append(final Cell cell) throws IOException {
     appendGeneralBloomfilter(cell);
     appendDeleteFamilyBloomFilter(cell);
+    //todo 追加写
     writer.append(cell);
     trackTimestamps(cell);
   }
@@ -355,7 +357,7 @@ public class StoreFileWriter implements CellSink, ShipperListener {
   public void close() throws IOException {
     boolean hasGeneralBloom = this.closeGeneralBloomFilter();
     boolean hasDeleteFamilyBloom = this.closeDeleteFamilyBloomFilter();
-
+    //todo 执行hfile的写出
     writer.close();
 
     // Log final Bloom filter statistics. This needs to be done after close()

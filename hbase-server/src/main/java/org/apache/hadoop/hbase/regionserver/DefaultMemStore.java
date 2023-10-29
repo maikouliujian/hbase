@@ -94,6 +94,7 @@ public class DefaultMemStore extends AbstractMemStore {
       if (!getActive().isEmpty()) {
         // Record the ImmutableSegment' heap overhead when initialing
         MemStoreSizing memstoreAccounting = new NonThreadSafeMemStoreSizing();
+        //todo 创建新的ImmutableSegment， 并将active mutableSegment 中的cellset复制给它
         ImmutableSegment immutableSegment =
           SegmentFactory.instance().createImmutableSegment(getActive(), memstoreAccounting);
         // regionServices can be null when testing
@@ -102,7 +103,9 @@ public class DefaultMemStore extends AbstractMemStore {
             memstoreAccounting.getHeapSize(), memstoreAccounting.getOffHeapSize(),
             memstoreAccounting.getCellsCount());
         }
+        //todo ImmutableSegment 就是此时的snapshot
         this.snapshot = immutableSegment;
+        //todo 新建一个active mutableSegment，用来接收数据
         resetActive();
         resetTimeOfOldestEdit();
       }

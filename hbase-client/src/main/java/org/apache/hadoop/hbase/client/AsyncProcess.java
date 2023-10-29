@@ -214,6 +214,10 @@ class AsyncProcess {
     SubmittedRows submittedRows =
       task.getSubmittedRows() == null ? SubmittedRows.ALL : task.getSubmittedRows();
     switch (submittedRows) {
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释：
+       */
       case ALL:
         return submitAll(task);
       case AT_LEAST_ONE:
@@ -340,6 +344,7 @@ class AsyncProcess {
    */
   static void addAction(ServerName server, byte[] regionName, Action action,
     Map<ServerName, MultiAction> actionsByServer, long nonceGroup) {
+    // TODO 注释： 根据 RegionServer 的 ServerName 名称找到 数据操作集合
     MultiAction multiAction = actionsByServer.get(server);
     if (multiAction == null) {
       multiAction = new MultiAction();
@@ -358,6 +363,11 @@ class AsyncProcess {
    * @param task The setting and data
    */
   private <CResult> AsyncRequestFuture submitAll(AsyncProcessTask task) {
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 获取到要插入的 Put 集合
+     *  注意： Put Delete Append Get Increment 等都是 Row 的子类
+     */
     RowAccess<? extends Row> rows = task.getRowAccess();
     List<Action> actions = new ArrayList<>(rows.size());
 
@@ -365,6 +375,9 @@ class AsyncProcess {
     int posInList = -1;
     NonceGenerator ng = this.connection.getNonceGenerator();
     int highestPriority = HConstants.PRIORITY_UNSET;
+    // TODO 注释： 将每个 Row 对象，封装成一个 Action 实例
+    // TODO 注释： 这个循环的作用： 将 rows 转变成 actions
+    //todo 第一步：将 rows 转变成 actions
     for (Row r : rows) {
       posInList++;
       if (r instanceof Put) {
@@ -382,6 +395,11 @@ class AsyncProcess {
     AsyncRequestFutureImpl<CResult> ars =
       createAsyncRequestFuture(task, actions, ng.getNonceGroup());
     //todo 触发请求
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释：
+     */
+    //todo 第二步：将actions分组发送
     ars.groupAndSendMultiAction(actions, 1);
     return ars;
   }
@@ -473,6 +491,10 @@ class AsyncProcess {
    */
   protected RpcRetryingCaller<AbstractResponse>
     createCaller(CancellableRegionServerCallable callable, int rpcTimeout) {
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： RpcRetryingCallerImpl
+     */
     return rpcCallerFactory.<AbstractResponse> newCaller(checkRpcTimeout(rpcTimeout));
   }
 

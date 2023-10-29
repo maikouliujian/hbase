@@ -624,6 +624,7 @@ public final class HConstants {
 
   /**
    * An empty byte array instance.
+   * todo 空数组代码无穷大？？？
    */
   public static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
 
