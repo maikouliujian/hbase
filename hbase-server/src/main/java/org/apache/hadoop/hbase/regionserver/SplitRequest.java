@@ -61,6 +61,7 @@ class SplitRequest implements Runnable {
     server.getMetrics().incrSplitRequest();
     if (user != null && user.getUGI() != null) {
       user.getUGI().doAs((PrivilegedAction<Void>) () -> {
+        //todo
         requestRegionSplit();
         return null;
       });
@@ -68,11 +69,13 @@ class SplitRequest implements Runnable {
       requestRegionSplit();
     }
   }
-
+  //todo 构建分裂的两个region的信息
   private void requestRegionSplit() {
     final TableName table = parent.getTable();
+    //todo StartKey->midKey
     final RegionInfo hri_a = RegionInfoBuilder.newBuilder(table).setStartKey(parent.getStartKey())
       .setEndKey(midKey).build();
+    //todo midKey->EndKey
     final RegionInfo hri_b =
       RegionInfoBuilder.newBuilder(table).setStartKey(midKey).setEndKey(parent.getEndKey()).build();
     // Send the split request to the master. the master will do the validation on the split-key.
@@ -80,6 +83,7 @@ class SplitRequest implements Runnable {
     // hri_a and hri_b objects may not reflect the regions that will be created, those objects
     // are created just to pass the information to the reportRegionStateTransition().
     if (
+      //todo 最终由hmaster完成分裂动作
       !server.reportRegionStateTransition(new RegionStateTransitionContext(
         TransitionCode.READY_TO_SPLIT, HConstants.NO_SEQNUM, -1, parent, hri_a, hri_b))
     ) {
@@ -94,7 +98,7 @@ class SplitRequest implements Runnable {
         + " or stopped=" + this.server.isStopped());
       return;
     }
-
+    //todo 执行
     doSplitting();
   }
 }

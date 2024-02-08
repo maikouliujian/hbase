@@ -151,7 +151,7 @@ class DefaultStoreFileManager implements StoreFileManager {
     // any useful candidates less than "candidate".
     return candidateFiles;
   }
-
+  //todo
   @Override
   public final Optional<byte[]> getSplitPoint() throws IOException {
     return StoreUtils.getSplitPoint(storefiles, cellComparator);

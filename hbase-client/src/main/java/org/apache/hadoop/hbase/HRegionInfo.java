@@ -523,6 +523,7 @@ public class HRegionInfo implements RegionInfo {
   }
 
   /** Returns true if the given row falls in this region. */
+  //todo row是否属于当前region
   @Override
   public boolean containsRow(byte[] row) {
     return Bytes.compareTo(row, startKey) >= 0

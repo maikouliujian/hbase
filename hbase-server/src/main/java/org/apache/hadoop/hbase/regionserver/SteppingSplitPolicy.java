@@ -33,6 +33,7 @@ public class SteppingSplitPolicy extends IncreasingToUpperBoundRegionSplitPolicy
    */
   @Override
   protected long getSizeToCheck(final int tableRegionsCount) {
+    //todo getDesiredMaxFileSize 10g
     return tableRegionsCount == 1 ? this.initialSize : getDesiredMaxFileSize();
   }
 }

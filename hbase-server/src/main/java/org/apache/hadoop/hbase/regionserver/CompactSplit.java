@@ -103,6 +103,8 @@ public class CompactSplit implements CompactionRequester, PropagatingConfigurati
     this.server = server;
     this.conf = server.getConfiguration();
     this.compactionsEnabled = this.conf.getBoolean(HBASE_REGION_SERVER_ENABLE_COMPACTION, true);
+    //todo longCompactions和smallCompactions的界限是一个compact请求的hfile总大小超过2.5g用 longCompactions
+    //todo 不是major和minor
     createCompactionExecutors();
     createSplitExcecutors();
 
@@ -196,6 +198,7 @@ public class CompactSplit implements CompactionRequester, PropagatingConfigurati
       if (shouldSplitRegion() && hr.getCompactPriority() >= PRIORITY_USER) {
         byte[] midKey = hr.checkSplit().orElse(null);
         if (midKey != null) {
+          //todo 请求执行Split
           requestSplit(r, midKey);
           return true;
         }
@@ -222,6 +225,7 @@ public class CompactSplit implements CompactionRequester, PropagatingConfigurati
       return;
     }
     try {
+      //todo 执行
       this.splits.execute(new SplitRequest(r, midKey, this.server, user));
       if (LOG.isDebugEnabled()) {
         LOG.debug("Splitting " + r + ", " + this);

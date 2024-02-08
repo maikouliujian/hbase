@@ -187,6 +187,8 @@ public class ScannerCallable extends ClientServiceCallable<Result[]> {
     ScanRequest request = RequestConverter.buildScanRequest(scannerId, caching, false, nextCallSeq,
       this.scanMetrics != null, renew, scan.getLimit());
     try {
+      //todo 发送rpc请求
+      //todo 到服务端RSRpcServices中
       ScanResponse response = getStub().scan(getRpcController(), request);
       nextCallSeq++;
       return response;
@@ -251,10 +253,13 @@ public class ScannerCallable extends ClientServiceCallable<Result[]> {
       close();
       return null;
     }
+    //todo scanrequest===> server ===> client ===> response
     ScanResponse response;
+    //todo 每一次的scan的逻辑操作，都有一个唯一的scannerid，scanner id由服务端生成返回给客户端！！！！！！
     if (this.scannerId == -1L) {
       response = openScanner();
     } else {
+      //todo
       response = next();
     }
     long timestamp = System.currentTimeMillis();

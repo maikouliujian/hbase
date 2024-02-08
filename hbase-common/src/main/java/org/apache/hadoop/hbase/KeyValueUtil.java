@@ -730,7 +730,7 @@ public class KeyValueUtil {
     return length(cell.getRowLength(), cell.getFamilyLength(), cell.getQualifierLength(),
       cell.getValueLength(), cell.getTagsLength(), withTags);
   }
-
+  //todo 将cell转化为二进制写出
   public static int oswrite(final Cell cell, final OutputStream out, final boolean withTags)
     throws IOException {
     if (cell instanceof ExtendedCell) {

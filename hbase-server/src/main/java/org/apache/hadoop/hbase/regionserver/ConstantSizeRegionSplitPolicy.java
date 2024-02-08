@@ -58,6 +58,7 @@ public class ConstantSizeRegionSplitPolicy extends RegionSplitPolicy {
     }
     if (this.desiredMaxFileSize <= 0) {
       this.desiredMaxFileSize =
+        //todo 10g
         conf.getLong(HConstants.HREGION_MAX_FILESIZE, HConstants.DEFAULT_MAX_FILE_SIZE);
     }
     this.overallHRegionFiles =

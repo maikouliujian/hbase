@@ -49,7 +49,7 @@ public abstract class Segment implements MemStoreSizing {
       + Bytes.SIZEOF_BOOLEAN); // tagsPresent
   public final static long DEEP_OVERHEAD = FIXED_OVERHEAD + ClassSize.ATOMIC_REFERENCE
     + ClassSize.CELL_SET + 2 * ClassSize.ATOMIC_LONG + ClassSize.REENTRANT_LOCK;
-
+  //todo
   private AtomicReference<CellSet> cellSet = new AtomicReference<>();
   private final CellComparator comparator;
   private ReentrantReadWriteLock updatesLock;
@@ -108,6 +108,7 @@ public abstract class Segment implements MemStoreSizing {
   }
 
   protected Segment(Segment segment) {
+    //todo 复制老segment的数据
     this.cellSet.set(segment.getCellSet());
     this.comparator = segment.getComparator();
     this.updatesLock = segment.getUpdatesLock();
@@ -176,7 +177,11 @@ public abstract class Segment implements MemStoreSizing {
   }
 
   public boolean shouldSeek(TimeRange tr, long oldestUnexpiredTS) {
-    return !isEmpty() && (tr.isAllTime() || timeRangeTracker.includesTimeRange(tr))
+    //todo 1、数据不能为空
+    return !isEmpty() &&
+      //todo 2、时间范围内过滤
+      (tr.isAllTime() || timeRangeTracker.includesTimeRange(tr))
+      //todo 3、ttl过滤
       && timeRangeTracker.getMax() >= oldestUnexpiredTS;
   }
 
@@ -300,6 +305,7 @@ public abstract class Segment implements MemStoreSizing {
 
   protected void internalAdd(Cell cell, boolean mslabUsed, MemStoreSizing memstoreSizing,
     boolean sizeAddedPreOperation) {
+    //todo 添加到cellset中
     boolean succ = getCellSet().add(cell);
     updateMetaInfo(cell, succ, mslabUsed, memstoreSizing, sizeAddedPreOperation);
   }

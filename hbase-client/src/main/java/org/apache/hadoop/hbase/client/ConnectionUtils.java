@@ -525,8 +525,10 @@ public final class ConnectionUtils {
       throw new IllegalArgumentException("No columns to insert");
     }
     if (maxKeyValueSize > 0) {
+      // TODO 注释： 遍历 Put 中的每个 Cell
       for (List<Cell> list : put.getFamilyCellMap().values()) {
         for (Cell cell : list) {
+          // TODO 注释： 遍历 Put 中的每个 Cell
           if (cell.getSerializedSize() > maxKeyValueSize) {
             throw new IllegalArgumentException("KeyValue size too large");
           }

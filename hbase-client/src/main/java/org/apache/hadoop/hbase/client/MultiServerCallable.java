@@ -101,6 +101,7 @@ class MultiServerCallable extends CancellableRegionServerCallable<MultiResponse>
     // Map from a created RegionAction to the original index for a RowMutations/CheckAndMutate
     // within the original list of actions. This will be used to process the results when there
     // is RowMutations/CheckAndMutate in the action list.
+    //todo 给每个region一个region action
     Map<Integer, Integer> indexMap = new HashMap<>();
     // The multi object is a list of Actions by region. Iterate by region.
     for (Map.Entry<byte[], List<Action>> e : this.multiAction.actions.entrySet()) {
@@ -125,9 +126,18 @@ class MultiServerCallable extends CancellableRegionServerCallable<MultiResponse>
     if (cells != null) {
       setRpcControllerCellScanner(CellUtil.createCellScanner(cells));
     }
+    // TODO 注释： 构建请求对象
     ClientProtos.MultiRequest requestProto = multiRequestBuilder.build();
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 发送请求【server段的RSRpcServices】
+     */
     ClientProtos.MultiResponse responseProto = getStub().multi(getRpcController(), requestProto);
     if (responseProto == null) return null; // Occurs on cancel
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 获取结果
+     */
     return ResponseConverter.getResults(requestProto, indexMap, responseProto,
       getRpcControllerCellScanner());
   }
@@ -146,6 +156,7 @@ class MultiServerCallable extends CancellableRegionServerCallable<MultiResponse>
   @Override
   public void prepare(boolean reload) throws IOException {
     // Use the location we were given in the constructor rather than go look it up.
+    //todo 和server创建连接
     setStub(getConnection().getClient(this.location.getServerName()));
   }
 

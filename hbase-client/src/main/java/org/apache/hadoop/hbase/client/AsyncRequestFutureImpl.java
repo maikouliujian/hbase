@@ -193,16 +193,29 @@ class AsyncRequestFutureImpl<CResult> implements AsyncRequestFuture {
       AbstractResponse res = null;
       CancellableRegionServerCallable callable = currentCallable;
       try {
+        /*************************************************
+         * TODO 马中华 https://blog.csdn.net/zhongqi2513
+         *  注释： MultiServerCallable
+         */
         // setup the callable based on the actions, if we don't have one already from the request
         if (callable == null) {
           callable = createCallable(server, tableName, multiAction);
         }
+        /*************************************************
+         * TODO 马中华 https://blog.csdn.net/zhongqi2513
+         *  注释： RpcRetryingCallerImpl
+         *  发送rpc请求的
+         */
         RpcRetryingCaller<AbstractResponse> caller =
           asyncProcess.createCaller(callable, rpcTimeout);
         try {
           if (callsInProgress != null) {
             callsInProgress.add(callable);
           }
+          /*************************************************
+           * TODO 马中华 https://blog.csdn.net/zhongqi2513
+           *  注释：
+           */
           res = caller.callWithoutRetries(callable, operationTimeout);
           if (res == null) {
             // Cancelled
@@ -220,6 +233,10 @@ class AsyncRequestFutureImpl<CResult> implements AsyncRequestFuture {
           receiveGlobalFailure(multiAction, server, numAttempt, t);
           return;
         }
+        /*************************************************
+         * TODO 马中华 https://blog.csdn.net/zhongqi2513
+         *  注释：
+         */
         if (res.type() == AbstractResponse.ResponseType.MULTI) {
           // Normal case: we received an answer from the server, and it's not an exception.
           receiveMultiAction(multiAction, server, (MultiResponse) res, numAttempt);
@@ -399,6 +416,7 @@ class AsyncRequestFutureImpl<CResult> implements AsyncRequestFuture {
 
   SingleServerRequestRunnable createSingleServerRequest(MultiAction multiAction, int numAttempt,
     ServerName server, Set<CancellableRegionServerCallable> callsInProgress) {
+    //todo
     return new SingleServerRequestRunnable(multiAction, numAttempt, server, callsInProgress);
   }
 
@@ -408,12 +426,15 @@ class AsyncRequestFutureImpl<CResult> implements AsyncRequestFuture {
    * @param numAttempt     - the current numAttempt (first attempt is 1)
    */
   void groupAndSendMultiAction(List<Action> currentActions, int numAttempt) {
+    //todo 第三部 将currentActions按照不同的rs分类组装
     Map<ServerName, MultiAction> actionsByServer = new HashMap<>();
 
     boolean isReplica = false;
     List<Action> unknownReplicaActions = null;
+    // TODO 注释： 将 action 分类保存起来
     for (Action action : currentActions) {
       //todo 找到region对应的location
+      // TODO 注释： 定位到每一个 Action 代表的 Row 的 RegionLocation 信息
       RegionLocations locs = findAllLocationsOrFail(action, true);
       if (locs == null) continue;
       boolean isReplicaAction = !RegionReplicaUtil.isDefaultReplica(action.getReplicaId());
@@ -422,6 +443,7 @@ class AsyncRequestFutureImpl<CResult> implements AsyncRequestFuture {
         throw new AssertionError("Replica and non-replica actions in the same retry");
       }
       isReplica = isReplicaAction;
+      // TODO 注释： 获取对应信息： action ==> row ==> region ==> regionlocation
       HRegionLocation loc = locs.getRegionLocation(action.getReplicaId());
       if (loc == null || loc.getServerName() == null) {
         if (isReplica) {
@@ -435,19 +457,32 @@ class AsyncRequestFutureImpl<CResult> implements AsyncRequestFuture {
         }
       } else {
         byte[] regionName = loc.getRegionInfo().getRegionName();
+        /*************************************************
+         * TODO 马中华 https://blog.csdn.net/zhongqi2513
+         *  注释： 将 action 分类保存起来
+         *  关注 第四个 参数： Map<ServerName, MultiAction> actionsByServer
+         *  客户端进行批量写入的时候，会往不同的 RegoinServer 写入多条数据
+         *  所以：
+         *  1、key = ServerName 代表 RegionServer 服务器
+         *  2、value = MultiAction 代表一堆要写入的数据
+         */
         AsyncProcess.addAction(loc.getServerName(), regionName, action, actionsByServer,
           nonceGroup);
       }
     }
     boolean doStartReplica = (numAttempt == 1 && !isReplica && hasAnyReplicaGets);
     boolean hasUnknown = unknownReplicaActions != null && !unknownReplicaActions.isEmpty();
-
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： 如果 actionsByServer 不为空，证明有数据需要发送，则执行发送
+     */
     if (!actionsByServer.isEmpty()) {
       // If this is a first attempt to group and send, no replicas, we need replica thread.
       sendMultiAction(actionsByServer, numAttempt,
         (doStartReplica && !hasUnknown) ? currentActions : null, numAttempt > 1 && !hasUnknown);
     }
-
+    // TODO 注释： 处理 未知 Action
+    // TODO 注释： 方式简单粗暴，直接一样的逻辑，再解析一遍
     if (hasUnknown) {
       actionsByServer = new HashMap<>();
       for (Action action : unknownReplicaActions) {
@@ -458,6 +493,10 @@ class AsyncRequestFutureImpl<CResult> implements AsyncRequestFuture {
           nonceGroup);
       }
       if (!actionsByServer.isEmpty()) {
+        /*************************************************
+         * TODO 马中华 https://blog.csdn.net/zhongqi2513
+         *  注释： 如果 actionsByServer 不为空，证明有数据需要发送，则执行发送
+         */
         sendMultiAction(actionsByServer, numAttempt, doStartReplica ? currentActions : null, true);
       }
     }
@@ -492,6 +531,7 @@ class AsyncRequestFutureImpl<CResult> implements AsyncRequestFuture {
     manageError(action.getOriginalIndex(), action.getAction(), Retry.NO_LOCATION_PROBLEM, ex, null);
   }
 
+  //todo action 寻址方法
   private RegionLocations findAllLocationsOrFail(Action action, boolean useCache) {
     if (action.getAction() == null)
       throw new IllegalArgumentException("#" + asyncProcess.id + ", row cannot be null");
@@ -517,10 +557,15 @@ class AsyncRequestFutureImpl<CResult> implements AsyncRequestFuture {
     // Run the last item on the same thread if we are already on a send thread.
     // We hope most of the time it will be the only item, so we can cut down on threads.
     int actionsRemaining = actionsByServer.size();
+    // TODO 注释： 遍历每一台服务器，构造一个 SingleServerRequestRunnable 线程来完成 客户端向 RS 的数据发送
     // This iteration is by server (the HRegionLocation comparator is by server portion only).
     for (Map.Entry<ServerName, MultiAction> e : actionsByServer.entrySet()) {
       ServerName server = e.getKey();
       MultiAction multiAction = e.getValue();
+      /*************************************************
+       * TODO_MA 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： SingleServerRequestRunnable 线程集合
+       */
       Collection<? extends Runnable> runnables =
         getNewMultiActionRunnable(server, multiAction, numAttempt);
       // make sure we correctly count the number of runnables before we try to reuse the send
@@ -533,6 +578,11 @@ class AsyncRequestFutureImpl<CResult> implements AsyncRequestFuture {
       // HBASE-17475: Do not reuse the thread after stack reach a certain depth to prevent stack
       // overflow
       // for now, we use HConstants.DEFAULT_HBASE_CLIENT_RETRIES_NUMBER to control the depth
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： 如果只有一个线程，则就在当前线程中即可，如果多个线程，则启动多个线程去运行
+       *  todo 就是 SingleServerRequestRunnable
+       */
       for (Runnable runnable : runnables) {
         if (
           (--actionsRemaining == 0) && reuseThread
@@ -540,6 +590,10 @@ class AsyncRequestFutureImpl<CResult> implements AsyncRequestFuture {
         ) {
           runnable.run();
         } else {
+          /*************************************************
+           * TODO 马中华 https://blog.csdn.net/zhongqi2513
+           *  注释： 将往每个 RS 发送数据的线程提交到 线程池中运行
+           */
           try {
             pool.submit(runnable);
           } catch (Throwable t) {
@@ -607,6 +661,7 @@ class AsyncRequestFutureImpl<CResult> implements AsyncRequestFuture {
         createSingleServerRequest(runner.getActions(), numAttempt, server, callsInProgress);
       // use a delay runner only if we need to sleep for some time
       if (runner.getSleepTime() > 0) {
+        //todo 将SingleServerRequestRunnable set进去
         runner.setRunner(runnable);
         traceText = "AsyncProcess.clientBackoff.sendMultiAction";
         runnable = runner;
@@ -1219,6 +1274,10 @@ class AsyncRequestFutureImpl<CResult> implements AsyncRequestFuture {
    */
   private MultiServerCallable createCallable(final ServerName server, TableName tableName,
     final MultiAction multi) {
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： MultiServerCallable 是 RegionServerCallable 的子类
+     */
     return new MultiServerCallable(asyncProcess.connection, tableName, server, multi,
       asyncProcess.rpcFactory.newController(), rpcTimeout, tracker, multi.getPriority());
   }

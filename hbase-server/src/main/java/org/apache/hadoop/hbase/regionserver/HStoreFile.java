@@ -301,7 +301,7 @@ public class HStoreFile implements StoreFile {
   public byte[] getMetadataValue(byte[] key) {
     return metadataMap.get(key);
   }
-
+  //todo bulkload的文件包含SeqId_
   @Override
   public boolean isBulkLoadResult() {
     boolean bulkLoadedHFile = false;

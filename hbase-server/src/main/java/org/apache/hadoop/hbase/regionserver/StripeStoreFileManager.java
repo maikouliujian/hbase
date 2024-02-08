@@ -304,7 +304,7 @@ public class StripeStoreFileManager
     if (state.stripeFiles.isEmpty()) {
       return state.level0Files; // There's just L0.
     }
-
+    //todo [ )
     int firstStripe = findStripeForRow(startRow, true);
     int lastStripe = findStripeForRow(stopRow, false);
     assert firstStripe <= lastStripe;

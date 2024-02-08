@@ -37,6 +37,13 @@ public final class MultiAction {
   // TODO: This class should not be visible outside of the client package.
 
   // map of regions to lists of puts/gets/deletes for that region.
+  /*************************************************
+   * TODO 马中华 https://blog.csdn.net/zhongqi2513
+   *  注释： 重点
+   *  这个集合，保存了往某个 RS 中一次写入的多个 Action 按照 Region 进行了分类
+   *  key：regionname
+   *  value：Action集合
+   */
   protected Map<byte[], List<Action>> actions = new TreeMap<>(Bytes.BYTES_COMPARATOR);
 
   private long nonceGroup = HConstants.NO_NONCE;

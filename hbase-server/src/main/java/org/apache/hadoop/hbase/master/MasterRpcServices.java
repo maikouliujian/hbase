@@ -1671,7 +1671,7 @@ public class MasterRpcServices extends RSRpcServices implements MasterService.Bl
       throw new ServiceException(ioe);
     }
   }
-
+  //todo 处理region的分裂请求
   @Override
   public ReportRegionStateTransitionResponse reportRegionStateTransition(RpcController c,
     ReportRegionStateTransitionRequest req) throws ServiceException {

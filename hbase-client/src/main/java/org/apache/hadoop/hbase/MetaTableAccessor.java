@@ -1048,6 +1048,7 @@ public class MetaTableAccessor {
   @Nullable
   public static RegionLocations getRegionLocations(final Result r) {
     if (r == null) return null;
+    //todo 获取RegionInfo
     RegionInfo regionInfo = getRegionInfo(r, getRegionInfoColumn());
     if (regionInfo == null) return null;
 

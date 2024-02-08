@@ -660,6 +660,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler, AdminService.Blockin
           result = region.getCoprocessorHost().preCheckAndMutate(checkAndMutate);
         }
         if (result == null) {
+          //todo
           result = region.checkAndMutate(checkAndMutate, nonceGroup, nonce);
           if (region.getCoprocessorHost() != null) {
             result = region.getCoprocessorHost().postCheckAndMutate(checkAndMutate, result);
@@ -1005,7 +1006,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler, AdminService.Blockin
       if (!atomic) {
         Arrays.sort(mArray, (v1, v2) -> Row.COMPARATOR.compare(v1, v2));
       }
-
+      //todo 向region写入数据
       OperationStatus[] codes = region.batchMutate(mArray, atomic, nonceGroup, nonce);
 
       // When atomic is true, it indicates that the mutateRow API or the batch API with
@@ -2684,15 +2685,17 @@ public class RSRpcServices implements HBaseRPCErrorHandler, AdminService.Blockin
    * @param rpcc    the RPC controller
    * @param request the multi request
    */
+  //todo 来自于client的rpc请求
   @Override
   public MultiResponse multi(final RpcController rpcc, final MultiRequest request)
     throws ServiceException {
     try {
+      //todo
       checkOpen();
     } catch (IOException ie) {
       throw new ServiceException(ie);
     }
-
+    //todo 一批次的action不能大于5000
     checkBatchSizeAndLogLargeSize(request);
 
     // rpc controller is how we bring in data via the back door; it is unprotobuf'ed data.
@@ -2740,6 +2743,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler, AdminService.Blockin
       }
 
       try {
+        //todo
         CheckAndMutateResult result = checkAndMutate(region, regionAction.getActionList(),
           cellScanner, request.getCondition(), nonceGroup, spaceQuotaEnforcement);
         responseBuilder.setProcessed(result.isSuccess());
@@ -2791,6 +2795,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler, AdminService.Blockin
       }
 
       try {
+        //todo 条件操作！！！
         if (regionAction.hasCondition()) {
           try {
             ClientProtos.ResultOrException.Builder resultOrExceptionOrBuilder =
@@ -2830,6 +2835,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler, AdminService.Blockin
             // As it's an atomic operation with a condition, we may expect it's a global failure.
             regionActionResultBuilder.setException(ResponseConverter.buildException(e));
           }
+          //todo 原子操作！！！
         } else if (regionAction.hasAtomic() && regionAction.getAtomic()) {
           try {
             doAtomicBatchOp(regionActionResultBuilder, region, quota, regionAction.getActionList(),
@@ -2843,6 +2849,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler, AdminService.Blockin
             // As it's atomic, we may expect it's a global failure.
             regionActionResultBuilder.setException(ResponseConverter.buildException(e));
           }
+          //todo 非原子操作！！！
         } else {
           // doNonAtomicRegionMutation manages the exception internally
           if (context != null && closeCallBack == null) {
@@ -3138,7 +3145,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler, AdminService.Blockin
     if (!isLoadingCfsOnDemandSet) {
       scan.setLoadColumnFamiliesOnDemand(region.isLoadingCfsOnDemandDefault());
     }
-
+    //todo 检查 Scan 对象中的列簇是否合法，如果没有指定列簇，则使用该 表的所有列簇
     if (!scan.hasFamilies()) {
       // Adding all families to scanner
       for (byte[] family : region.getTableDescriptor().getColumnFamilyNames()) {
@@ -3150,6 +3157,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler, AdminService.Blockin
       // wrapper for the core created RegionScanner
       region.getCoprocessorHost().preScannerOpen(scan);
     }
+    //todo 获取scanner！！！！！！
     RegionScannerImpl coreScanner = region.getScanner(scan);
     Shipper shipper = coreScanner;
     RegionScanner scanner = coreScanner;
@@ -3164,6 +3172,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler, AdminService.Blockin
       scanner.close();
       throw e;
     }
+    //todo 生成scanner id
     long scannerId = scannerIdGenerator.generateNewScannerId();
     builder.setScannerId(scannerId);
     builder.setMvccReadPoint(scanner.getMvccReadPoint());
@@ -3349,6 +3358,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler, AdminService.Blockin
           assert values.isEmpty();
 
           // Collect values to be returned here
+          //todo
           moreRows = scanner.nextRaw(values, scannerContext);
           if (rpcCall == null) {
             // When there is no RpcCallContext,copy EC to heap, then the scanner would close,
@@ -3389,6 +3399,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler, AdminService.Blockin
             boolean mayHaveMoreCellsInRow = scannerContext.mayHaveMoreCellsInRow();
             Result r = Result.create(values, null, stale, mayHaveMoreCellsInRow);
             lastBlock.setValue(addSize(rpcCall, r, lastBlock.getValue()));
+            //todo 将结果加入results
             results.add(r);
             numOfResults++;
             if (!mayHaveMoreCellsInRow && limitOfRows > 0) {
@@ -3479,6 +3490,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler, AdminService.Blockin
    * @param controller the RPC controller
    * @param request    the scan request
    */
+  //todo scan的逻辑！！！！！！数据查询进入服务端
   @Override
   public ScanResponse scan(final RpcController controller, final ScanRequest request)
     throws ServiceException {
@@ -3491,6 +3503,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler, AdminService.Blockin
         new DoNotRetryIOException("Missing required input: scannerId or scan"));
     }
     try {
+      //todo 第一 检查 regionserver 的状态： Abort Stop FileSystem Online
       checkOpen();
     } catch (IOException e) {
       if (request.hasScannerId()) {
@@ -3515,10 +3528,14 @@ public class RSRpcServices implements HBaseRPCErrorHandler, AdminService.Blockin
     }
     requestCount.increment();
     rpcScanRequestCount.increment();
+    //todo  第三 构建 RegionScanner
     RegionScannerHolder rsh;
+    // todo 第二 构建 ResponseBuilder
     ScanResponse.Builder builder = ScanResponse.newBuilder();
     String scannerName;
+    //todo 【核心方法】
     try {
+      //todo 非第一次
       if (request.hasScannerId()) {
         // The downstream projects such as AsyncHBase in OpenTSDB need this value. See HBASE-18000
         // for more details.
@@ -3527,6 +3544,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler, AdminService.Blockin
         scannerName = toScannerName(scannerId);
         rsh = getRegionScanner(request);
       } else {
+        //todo 第一次走这！！！！！！！
         Pair<String, RegionScannerHolder> scannerNameAndRSH = newRegionScanner(request, builder);
         scannerName = scannerNameAndRSH.getFirst();
         rsh = scannerNameAndRSH.getSecond();
@@ -3599,6 +3617,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler, AdminService.Blockin
     MutableObject<Object> lastBlock = new MutableObject<>();
     boolean scannerClosed = false;
     try {
+      //todo 一次rpc最多返回512条数据
       List<Result> results = new ArrayList<>(Math.min(rows, 512));
       if (rows > 0) {
         boolean done = false;
@@ -3615,6 +3634,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler, AdminService.Blockin
           }
         }
         if (!done) {
+          //todo 第四 执行 scan ！！！！！！小根堆的遍历和维护
           scan((HBaseRpcController) controller, request, rsh, maxQuotaResultSize, rows, limitOfRows,
             results, builder, lastBlock, rpcCall);
         } else {
@@ -3626,6 +3646,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler, AdminService.Blockin
       }
 
       quota.addScanResult(results);
+      //todo 第五 将 Scan 结果加入到 ResponseBuilder 中
       addResults(builder, results, (HBaseRpcController) controller,
         RegionReplicaUtil.isDefaultReplica(region.getRegionInfo()),
         isClientCellBlockSupport(rpcCall));
@@ -3641,6 +3662,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler, AdminService.Blockin
       assert builder.hasMoreResultsInRegion();
       // we only set moreResults to false in the above code, so set it to true if we haven't set it
       // yet.
+      //todo 第六 设置是否还有没扫描完的结果
       if (!builder.hasMoreResults()) {
         builder.setMoreResults(true);
       }
@@ -3662,6 +3684,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler, AdminService.Blockin
         scannerClosed = true;
         closeScanner(region, scanner, scannerName, rpcCall);
       }
+      //todo 第七 返回 ScanResponse
       return builder.build();
     } catch (IOException e) {
       try {

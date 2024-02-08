@@ -89,6 +89,7 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.RegionServerStatusProto
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RegionServerStatusProtos.RegionStateTransition.TransitionCode;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RegionServerStatusProtos.ReportRegionStateTransitionRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RegionServerStatusProtos.ReportRegionStateTransitionResponse;
+import static org.apache.hadoop.hbase.master.RegionState.State.FAILED_OPEN;
 
 /**
  * The AssignmentManager is the coordinator for region assign/unassign operations.
@@ -984,6 +985,7 @@ public class AssignmentManager {
   // ============================================================================================
   // RS Region Transition Report helpers
   // ============================================================================================
+  //todo 处理各种请求
   private void reportRegionStateTransition(ReportRegionStateTransitionResponse.Builder builder,
     ServerName serverName, List<RegionStateTransition> transitionList) throws IOException {
     for (RegionStateTransition transition : transitionList) {
@@ -999,6 +1001,7 @@ public class AssignmentManager {
             transition.hasOpenSeqNum() ? transition.getOpenSeqNum() : HConstants.NO_SEQNUM, procId);
           break;
         case READY_TO_SPLIT:
+          //todo 处理SPLIT
         case SPLIT:
         case SPLIT_REVERTED:
           assert transition.getRegionInfoCount() == 3 : transition;
@@ -1021,7 +1024,7 @@ public class AssignmentManager {
       }
     }
   }
-
+  //todo 处理region的操作请求
   public ReportRegionStateTransitionResponse reportRegionStateTransition(
     final ReportRegionStateTransitionRequest req) throws PleaseHoldException {
     ReportRegionStateTransitionResponse.Builder builder =
@@ -1869,7 +1872,7 @@ public class AssignmentManager {
     RegionState.State state = regionNode.getState();
     ServerName regionLocation = regionNode.getRegionLocation();
     if (giveUp) {
-      regionNode.setState(State.FAILED_OPEN);
+      regionNode.setState(FAILED_OPEN);
       regionNode.setRegionLocation(null);
       boolean succ = false;
       try {

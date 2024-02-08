@@ -310,6 +310,7 @@ public abstract class HFileReaderImpl implements HFile.Reader, Configurable {
     private int currValueLen;
     private int currMemstoreTSLen;
     private long currMemstoreTS;
+    //todo hfile reader
     protected final HFile.Reader reader;
     private int currTagsLen;
     private short rowLen;
@@ -736,6 +737,7 @@ public abstract class HFileReaderImpl implements HFile.Reader, Configurable {
         }
         // We are reading the next block without block type validation, because
         // it might turn out to be a non-data block.
+        //todo 读取数据块
         block = reader.readBlock(block.getOffset() + block.getOnDiskSizeWithHeader(),
           block.getNextBlockOnDiskSize(), cacheBlocks, pread, isCompaction, true, null,
           getEffectiveDataBlockEncoding());
@@ -751,7 +753,7 @@ public abstract class HFileReaderImpl implements HFile.Reader, Configurable {
     public DataBlockEncoding getEffectiveDataBlockEncoding() {
       return this.reader.getEffectiveEncodingInCache(isCompaction);
     }
-
+    //todo 获取cell
     @Override
     public Cell getCell() {
       if (!isSeeked()) {
@@ -867,11 +869,13 @@ public abstract class HFileReaderImpl implements HFile.Reader, Configurable {
         setNonSeekedState();
         return false;
       }
+      //todo
       return isNextBlock();
     }
 
     private boolean isNextBlock() throws IOException {
       // Methods are small so they get inlined because they are 'hot'.
+      //todo 读取数据块！！！！！！
       HFileBlock nextBlock = readNextDataBlock();
       if (nextBlock == null) {
         setNonSeekedState();
@@ -884,6 +888,7 @@ public abstract class HFileReaderImpl implements HFile.Reader, Configurable {
     private final boolean _next() throws IOException {
       // Small method so can be inlined. It is a hot one.
       if (blockBuffer.remaining() <= 0) {
+        //todo
         return positionForNextBlock();
       }
 
@@ -903,6 +908,7 @@ public abstract class HFileReaderImpl implements HFile.Reader, Configurable {
       // Checked by setting: -XX:+UnlockDiagnosticVMOptions -XX:+PrintInlining -XX:+PrintCompilation
       assertSeeked();
       positionThisBlockBuffer();
+      //todo
       return _next();
     }
 
@@ -1234,10 +1240,11 @@ public abstract class HFileReaderImpl implements HFile.Reader, Configurable {
   public HFileBlock readBlock(long dataBlockOffset, long onDiskBlockSize, final boolean cacheBlock,
     boolean pread, final boolean isCompaction, boolean updateCacheMetrics,
     BlockType expectedBlockType, DataBlockEncoding expectedDataBlockEncoding) throws IOException {
+    //todo
     return readBlock(dataBlockOffset, onDiskBlockSize, cacheBlock, pread, isCompaction,
       updateCacheMetrics, expectedBlockType, expectedDataBlockEncoding, false);
   }
-
+  //todo 读取块！！！！！！
   @Override
   public HFileBlock readBlock(long dataBlockOffset, long onDiskBlockSize, final boolean cacheBlock,
     boolean pread, final boolean isCompaction, boolean updateCacheMetrics,
@@ -1257,7 +1264,7 @@ public abstract class HFileReaderImpl implements HFile.Reader, Configurable {
     // Without a cache, this synchronizing is needless overhead, but really
     // the other choice is to duplicate work (which the cache would prevent you
     // from doing).
-
+    //todo 构建BlockCacheKey
     BlockCacheKey cacheKey =
       new BlockCacheKey(name, dataBlockOffset, this.isPrimaryReplicaReader(), expectedBlockType);
 
@@ -1272,6 +1279,7 @@ public abstract class HFileReaderImpl implements HFile.Reader, Configurable {
           }
           // Try and get the block from the block cache. If the useLock variable is true then this
           // is the second time through the loop and it should not be counted as a block cache miss.
+          //todo 从blockcache中获取data block
           HFileBlock cachedBlock = getCachedBlock(cacheKey, cacheBlock, useLock, updateCacheMetrics,
             expectedBlockType, expectedDataBlockEncoding);
           if (cachedBlock != null) {
@@ -1311,6 +1319,7 @@ public abstract class HFileReaderImpl implements HFile.Reader, Configurable {
 
         TraceUtil.addTimelineAnnotation("blockCacheMiss");
         // Load block from filesystem.
+        //todo 从hfile中读取！！！！！！
         HFileBlock hfileBlock = fsBlockReader.readBlockData(dataBlockOffset, onDiskBlockSize, pread,
           !isCompaction, shouldUseHeap(expectedBlockType));
         validateBlockType(hfileBlock, expectedBlockType);
@@ -1333,11 +1342,13 @@ public abstract class HFileReaderImpl implements HFile.Reader, Configurable {
           }
           return hfileBlock;
         }
+        //todo 解包解压缩
         HFileBlock unpacked = hfileBlock.unpack(hfileContext, fsBlockReader);
         // Cache the block if necessary
         cacheConf.getBlockCache().ifPresent(cache -> {
           if (cacheBlock && cacheConf.shouldCacheBlockOnRead(category)) {
             // Using the wait on cache during compaction and prefetching.
+            //todo 将数据缓存到blockcache中
             cache.cacheBlock(cacheKey, cacheCompressed ? hfileBlock : unpacked,
               cacheConf.isInMemory(), cacheOnly);
           }
@@ -1349,7 +1360,7 @@ public abstract class HFileReaderImpl implements HFile.Reader, Configurable {
         if (updateCacheMetrics && hfileBlock.getBlockType().isData()) {
           HFile.DATABLOCK_READ_COUNT.increment();
         }
-
+        //todo 返回数据
         return unpacked;
       }
     } finally {

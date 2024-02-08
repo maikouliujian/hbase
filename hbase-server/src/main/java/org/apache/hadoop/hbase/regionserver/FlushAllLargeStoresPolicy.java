@@ -56,6 +56,7 @@ public class FlushAllLargeStoresPolicy extends FlushLargeStoresPolicy {
     Collection<HStore> stores = region.stores.values();
     Set<HStore> specificStoresToFlush = new HashSet<>();
     for (HStore store : stores) {
+      //todo 判断store是否可以flush
       if (shouldFlush(store)) {
         specificStoresToFlush.add(store);
       }
@@ -73,6 +74,8 @@ public class FlushAllLargeStoresPolicy extends FlushLargeStoresPolicy {
 
   @Override
   protected boolean shouldFlush(HStore store) {
+    //todo 1）super.shouldFlush(store) 判断store中memstore的大小 128m
+    //todo 2）region.shouldFlushStore(store); 判断store中memstore数据条数超过3000w条 或者 超过1小时没有flush
     return super.shouldFlush(store) || region.shouldFlushStore(store);
   }
 

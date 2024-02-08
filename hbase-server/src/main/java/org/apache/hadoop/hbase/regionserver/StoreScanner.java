@@ -242,7 +242,9 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
     List<KeyValueScanner> scanners = null;
     try {
       // Pass columns to try to filter out unnecessary StoreFiles.
+      //todo 2）使用布隆过滤器、时间范围和 TTL 过滤给定的 Scanner
       scanners = selectScannersFrom(store,
+        //todo 1）获取store中的所有子scanner
         store.getScanners(cacheBlocks, scanUsePread, false, matcher, scan.getStartRow(),
           scan.includeStartRow(), scan.getStopRow(), scan.includeStopRow(), this.readPt));
 
@@ -250,6 +252,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
       // key does not exist, then to the start of the next matching Row).
       // Always check bloom filter to optimize the top row seek for delete
       // family marker.
+      //todo 3）定位scanner
       seekScanners(scanners, matcher.getStartKey(), explicitColumnQuery && lazySeekEnabledGlobally,
         parallelSeekEnabled);
 
@@ -260,6 +263,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
       this.storeOffset = scan.getRowOffsetPerColumnFamily();
       addCurrentScanners(scanners);
       // Combine all seeked scanners with a heap
+      //todo 4）设置一个堆
       resetKVHeap(scanners, comparator);
     } catch (IOException e) {
       clearAndClose(scanners);
@@ -406,6 +410,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
             throw new RowTooBigException(
               "Max row size allowed: " + maxRowSize + ", but row is bigger than that");
           }
+          //todo
           scanner.seek(seekKey);
           Cell c = scanner.peek();
           if (c != null) {
@@ -460,7 +465,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
         kvs.close();
         continue;
       }
-
+      //todo 过滤：【布隆过滤器、ttl、rowkey范围】
       if (kvs.shouldUseScanner(scan, store, expiredTimestampCutoff)) {
         scanners.add(kvs);
       } else {
@@ -550,7 +555,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
       close(false);// Do all cleanup except heap.close()
       return scannerContext.setScannerState(NextState.NO_MORE_VALUES).hasMoreValues();
     }
-
+    //todo 从堆顶获取元素！！！！！！
     Cell cell = this.heap.peek();
     if (cell == null) {
       close(false);// Do all cleanup except heap.close()

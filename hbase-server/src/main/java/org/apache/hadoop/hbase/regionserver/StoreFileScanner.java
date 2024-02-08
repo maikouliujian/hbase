@@ -47,6 +47,7 @@ import org.apache.yetus.audience.InterfaceStability;
 public class StoreFileScanner implements KeyValueScanner {
   // the reader it comes from:
   private final StoreFileReader reader;
+  //todo HFileScanner
   private final HFileScanner hfs;
   private Cell cur = null;
   private boolean closed = false;
@@ -117,6 +118,7 @@ public class StoreFileScanner implements KeyValueScanner {
     }
     List<StoreFileScanner> scanners = new ArrayList<>(files.size());
     boolean canOptimizeForNonNullColumn = matcher != null ? !matcher.hasNullColumnInQuery() : false;
+    //todo 将所有的 HFile 也构建成 小根堆
     PriorityQueue<HStoreFile> sortedFiles =
       new PriorityQueue<>(files.size(), StoreFileComparators.SEQ_ID);
     for (HStoreFile file : files) {
@@ -126,6 +128,7 @@ public class StoreFileScanner implements KeyValueScanner {
     }
     boolean succ = false;
     try {
+      //todo 创建每个 HFile 的 HFileScanner，具体实现是：HFileScannerImpl
       for (int i = 0, n = files.size(); i < n; i++) {
         HStoreFile sf = sortedFiles.remove();
         StoreFileScanner scanner;
@@ -192,6 +195,7 @@ public class StoreFileScanner implements KeyValueScanner {
       // only seek if we aren't at the end. cur == null implies 'end'.
       if (cur != null) {
         hfs.next();
+        //todo 更新cur
         setCurrentCell(hfs.getCell());
         if (hasMVCCInfo || this.reader.isBulkLoaded()) {
           skipKVsNewerThanReadpoint();
@@ -463,7 +467,7 @@ public class StoreFileScanner implements KeyValueScanner {
   static final void instrument() {
     seekCount = new LongAdder();
   }
-
+  //todo 过滤
   @Override
   public boolean shouldUseScanner(Scan scan, HStore store, long oldestUnexpiredTS) {
     // if the file has no entries, no need to validate or create a scanner.
@@ -472,8 +476,11 @@ public class StoreFileScanner implements KeyValueScanner {
     if (timeRange == null) {
       timeRange = scan.getTimeRange();
     }
+    //todo 1、时间戳范围过滤
     return reader.passesTimerangeFilter(timeRange, oldestUnexpiredTS)
+      //todo 2、rowkey范围过滤
       && reader.passesKeyRangeFilter(scan)
+      //todo 3、布隆过滤器过滤
       && reader.passesBloomFilter(scan, scan.getFamilyMap().get(cf));
   }
 

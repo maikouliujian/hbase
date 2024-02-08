@@ -42,9 +42,10 @@ public abstract class AbstractMemStore implements MemStore {
 
   private final Configuration conf;
   private final CellComparator comparator;
-
+  //todo for active
   // active segment absorbs write operations
   private volatile MutableSegment active;
+  //todo for snapshot
   // Snapshot of memstore. Made for flusher.
   protected volatile ImmutableSegment snapshot;
   protected volatile long snapshotId;
@@ -154,6 +155,7 @@ public abstract class AbstractMemStore implements MemStore {
     MutableSegment currentActive;
     boolean succ = false;
     while (!succ) {
+      //todo 获取active MutableSegment
       currentActive = getActive();
       succ = preUpdate(currentActive, cell, memstoreSizing);
       if (succ) {
@@ -168,6 +170,7 @@ public abstract class AbstractMemStore implements MemStore {
   }
 
   protected void doAdd(MutableSegment currentActive, Cell cell, MemStoreSizing memstoreSizing) {
+    //todo
     Cell toAdd = maybeCloneWithAllocator(currentActive, cell, false);
     boolean mslabUsed = (toAdd != cell);
     // This cell data is backed by the same byte[] where we read request in RPC(See
@@ -355,6 +358,7 @@ public abstract class AbstractMemStore implements MemStore {
   private void internalAdd(MutableSegment currentActive, final Cell toAdd, final boolean mslabUsed,
     MemStoreSizing memstoreSizing) {
     boolean sizeAddedPreOperation = sizeAddedPreOperation();
+    //todo 添加cell
     currentActive.add(toAdd, mslabUsed, memstoreSizing, sizeAddedPreOperation);
     setOldestEditTimeToNow();
   }

@@ -845,14 +845,26 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
     if (tableName == null || tableName.getName().length == 0) {
       throw new IllegalArgumentException("table name cannot be null or zero length");
     }
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释： meta 表定位
+     *  第一个网络来回：客户端 发送 请求给 zookeeper 获取到 meta 表的 region 的位置信息
+     *  获取了数据之后，会缓存在客户端中的 MetaCache 组件中
+     */
     if (tableName.equals(TableName.META_TABLE_NAME)) {
       return locateMeta(tableName, useCache, replicaId);
     } else {
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： 普通用户表定位
+       *  第二个网络来回： 发送请求给 meta 表的 region 所在的 regoinserver 来扫描这个 region 获取用户要插入的数据
+       *  所在的 region 的位置信息（到底是那个 regionServer）
+       */
       // Region not in the cache - have to go to the meta RS
       return locateRegionInMeta(tableName, row, useCache, retry, replicaId);
     }
   }
-
+  //todo double check
   private RegionLocations locateMeta(final TableName tableName, boolean useCache, int replicaId)
     throws IOException {
     // HBASE-10785: We cache the location of the META itself, so that we are not overloading
@@ -860,6 +872,7 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
     // key in MetaCache.
     byte[] metaCacheKey = HConstants.EMPTY_START_ROW; // use byte[0] as the row for meta
     RegionLocations locations = null;
+    // TODO 注释： 首先尝试从 meta 缓存中获取
     if (useCache) {
       locations = getCachedLocation(tableName, metaCacheKey);
       if (locations != null && locations.getRegionLocation(replicaId) != null) {
@@ -871,6 +884,7 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
     synchronized (metaRegionLock) {
       // Check the cache again for a hit in case some other thread made the
       // same query while we were waiting on the lock.
+      // TODO 注释： 通过 double check 再次尝试从 meta 缓存中获取
       if (useCache) {
         locations = getCachedLocation(tableName, metaCacheKey);
         if (locations != null && locations.getRegionLocation(replicaId) != null) {
@@ -879,8 +893,17 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
       }
 
       // Look up from zookeeper
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： 发送请求给 ZooKeeper 获取 meta 表的位置信息
+       */
       locations = get(this.registry.getMetaRegionLocations());
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： 将获取到的 meta 的位置信息缓存起来
+       */
       if (locations != null) {
+        // TODO 注释： 将 meta 表的 region 信息都缓存下来
         cacheLocation(tableName, locations);
       }
     }
@@ -909,6 +932,7 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
     byte[] metaStartKey = RegionInfo.createRegionName(tableName, row, HConstants.NINES, false);
     byte[] metaStopKey =
       RegionInfo.createRegionName(tableName, HConstants.EMPTY_START_ROW, "", false);
+    //todo 构造对于meta表的scan对象
     Scan s = new Scan().withStartRow(metaStartKey).withStopRow(metaStopKey, true)
       .addFamily(HConstants.CATALOG_FAMILY).setReversed(true).setCaching(1)
       .setReadType(ReadType.PREAD);
@@ -937,6 +961,7 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
         throw new NoServerForRegionException("Unable to find region for "
           + Bytes.toStringBinary(row) + " in " + tableName + " after " + tries + " tries.");
       }
+      //todo 查询
       if (useCache) {
         RegionLocations locations = getCachedLocation(tableName, row);
         if (locations != null && locations.getRegionLocation(replicaId) != null) {
@@ -964,6 +989,7 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
           relocateRegion(TableName.META_TABLE_NAME, HConstants.EMPTY_START_ROW,
             RegionInfo.DEFAULT_REPLICA_ID);
         }
+        //todo 进行scan
         s.resetMvccReadPoint();
         try (ReversedClientScanner rcs =
           new ReversedClientScanner(conf, s, TableName.META_TABLE_NAME, this, rpcCallerFactory,
@@ -981,6 +1007,7 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
             }
             tableNotFound = false;
             // convert the row result into the HRegionLocation we need!
+            //todo 将regionInfoRow 转化为 HRegionLocation
             locations = MetaTableAccessor.getRegionLocations(regionInfoRow);
             if (locations == null || locations.getRegionLocation(replicaId) == null) {
               throw new IOException("RegionInfo null in " + tableName + ", row=" + regionInfoRow);
@@ -992,6 +1019,7 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
             }
             // See HBASE-20182. It is possible that we locate to a split parent even after the
             // children are online, so here we need to skip this region and go to the next one.
+            //todo 在分裂就跳过
             if (regionInfo.isSplitParent()) {
               continue;
             }
@@ -1342,6 +1370,10 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
     String key = getStubKey(ClientProtos.ClientService.BlockingInterface.class.getName(),
       serverName, this.hostnamesCanChange);
     return (ClientProtos.ClientService.BlockingInterface) computeIfAbsentEx(stubs, key, () -> {
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释：
+       */
       BlockingRpcChannel channel =
         this.rpcClient.createBlockingRpcChannel(serverName, user, rpcTimeout);
       return ClientProtos.ClientService.newBlockingStub(channel);

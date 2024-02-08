@@ -429,13 +429,16 @@ public class HTable implements Table {
 
   public void batch(final List<? extends Row> actions, final Object[] results, int rpcTimeout)
     throws InterruptedException, IOException {
+    // TODO 注释： 构建 AsyncProcessTask 实例
     AsyncProcessTask task =
       AsyncProcessTask.newBuilder().setPool(pool).setTableName(tableName).setRowAccess(actions)
         .setResults(results).setRpcTimeout(rpcTimeout).setOperationTimeout(operationTimeoutMs)
         .setSubmittedRows(AsyncProcessTask.SubmittedRows.ALL).build();
     //todo 提交task
     AsyncRequestFuture ars = multiAp.submit(task);
+    // TODO 注释： 等待完成
     ars.waitUntilDone();
+    // TODO 注释： 如果有异常，则打印输出异常信息
     if (ars.hasError()) {
       throw ars.getErrors();
     }
@@ -522,7 +525,12 @@ public class HTable implements Table {
   //todo batch put的入口
   @Override
   public void put(final List<Put> puts) throws IOException {
+    /*************************************************
+     * TODO 马中华 https://blog.csdn.net/zhongqi2513
+     *  注释：
+     */
     for (Put put : puts) {
+      //todo 客户端校验，每个cell大小不能超过10m
       validatePut(put);
     }
     Object[] results = new Object[puts.size()];

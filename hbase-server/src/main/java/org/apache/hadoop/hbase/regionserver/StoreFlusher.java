@@ -63,8 +63,10 @@ abstract class StoreFlusher {
     // hfile. Also write current time in metadata as minFlushTime.
     // The hfile is current up to and including cacheFlushSeqNum.
     status.setStatus("Flushing " + store + ": appending metadata");
+    //todo 追加元数据信息
     writer.appendMetadata(cacheFlushSeqNum, false);
     status.setStatus("Flushing " + store + ": closing flushed file");
+    //todo 执行hfile的写出
     writer.close();
   }
 
@@ -81,6 +83,7 @@ abstract class StoreFlusher {
       scanInfo = store.getScanInfo();
     }
     final long smallestReadPoint = store.getSmallestReadPoint();
+    //todo 构建StoreScanner
     InternalScanner scanner = new StoreScanner(store, scanInfo, snapshotScanners,
       ScanType.COMPACT_RETAIN_DELETES, smallestReadPoint, HConstants.OLDEST_TIMESTAMP);
 
@@ -126,6 +129,7 @@ abstract class StoreFlusher {
             // If we know that this KV is going to be included always, then let us
             // set its memstoreTS to 0. This will help us save space when writing to
             // disk.
+            //todo 写入
             sink.append(c);
             if (control) {
               throughputController.control(flushName, c.getSerializedSize());

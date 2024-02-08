@@ -41,10 +41,12 @@ import org.slf4j.LoggerFactory;
  * InternalScanner. WARNING: As is, if you try to use this as an InternalScanner at the Store level,
  * you will get runtime exceptions.
  */
+//todo keyvalue 堆，堆上每一个节点是store scanner
 @InterfaceAudience.Private
 public class KeyValueHeap extends NonReversedNonLazyKeyValueScanner
   implements KeyValueScanner, InternalScanner {
   private static final Logger LOG = LoggerFactory.getLogger(KeyValueHeap.class);
+  //todo 构建小顶堆，堆的每一个元素是一个KeyValueScanner
   protected PriorityQueue<KeyValueScanner> heap = null;
   // Holds the scanners when a ever a eager close() happens. All such eagerly closed
   // scans are collected and when the final scanner.close() happens will perform the
@@ -80,6 +82,7 @@ public class KeyValueHeap extends NonReversedNonLazyKeyValueScanner
     this.comparator = comparator;
     this.scannersForDelayedClose = new ArrayList<>(scanners.size());
     if (!scanners.isEmpty()) {
+      //todo 构建一个heap
       this.heap = new PriorityQueue<>(scanners.size(), this.comparator);
       for (KeyValueScanner scanner : scanners) {
         if (scanner.peek() != null) {
@@ -88,6 +91,7 @@ public class KeyValueHeap extends NonReversedNonLazyKeyValueScanner
           this.scannersForDelayedClose.add(scanner);
         }
       }
+      //todo 返回堆顶
       this.current = pollRealKV();
     }
   }
@@ -97,6 +101,7 @@ public class KeyValueHeap extends NonReversedNonLazyKeyValueScanner
     if (this.current == null) {
       return null;
     }
+    //todo scanner的peek
     return this.current.peek();
   }
 
@@ -142,6 +147,7 @@ public class KeyValueHeap extends NonReversedNonLazyKeyValueScanner
       return scannerContext.setScannerState(NextState.NO_MORE_VALUES).hasMoreValues();
     }
     InternalScanner currentAsInternal = (InternalScanner) this.current;
+    //todo
     boolean moreCells = currentAsInternal.next(result, scannerContext);
     Cell pee = this.current.peek();
 

@@ -48,6 +48,13 @@ public class MetaCache {
   /**
    * Map of table to table {@link HRegionLocation}s.
    * //todo <表名,<startRowkey,RegionLocations>>
+   *
+   *   // 该 Map 是核心变量，用来存储 缓存的 Table 的 Region 的位置信息
+   *   // 一个 Table 可能会有多个 Region
+   *   // ConcurrentMap<A, ConcurrentNavigableMap<B, C>>
+   *   // TODO 注释： A = 表名
+   *   // TODO 注释： B = startRowkey
+   *   // TODO 注释： C = RegionInfo 封装而成的 HRegionLocation 的集合体
    */
   private final ConcurrentMap<TableName,
     ConcurrentNavigableMap<byte[], RegionLocations>> cachedRegionLocations =
@@ -58,6 +65,7 @@ public class MetaCache {
   // of a server in this map guarantees that there is no entry in cache that
   // maps to the absent server.
   // The access to this attribute must be protected by a lock on cachedRegionLocations
+  // todo 有 Region 位置缓存的 RegionServer 集合
   private final Set<ServerName> cachedServers = new CopyOnWriteArraySet<>();
 
   private final MetricsConnection metrics;
@@ -70,11 +78,18 @@ public class MetaCache {
    * Search the cache for a location that fits our table and row key. Return null if no suitable
    * region is located.
    * @return Null or region location found in cache.
+   *
+   * todo
+   * // table1 rk01 Regioninfo1
+   * // table1 rk03 RegionInfo3
+   * // table1 rk02 RegionInfo2
+   * // 假设： row = rk022
+   * // 解决方案： 先按照 Region 的 startRowkey 进行排序，然后获取 不大于自己的最大的/最后一个 Region
    */
   public RegionLocations getCachedLocation(final TableName tableName, final byte[] row) {
     //todo 获取table的缓存
     ConcurrentNavigableMap<byte[], RegionLocations> tableLocations = getTableLocations(tableName);
-    //todo 获取row的rs缓存
+    //todo 获取row的rs缓存【floorEntry：寻找小于等于row的最大的startkey对应的entry】
     Entry<byte[], RegionLocations> e = tableLocations.floorEntry(row);
     if (e == null) {
       if (metrics != null) metrics.incrMetaCacheMiss();
@@ -87,6 +102,7 @@ public class MetaCache {
     // this one. the exception case is when the endkey is
     // HConstants.EMPTY_END_ROW, signifying that the region we're
     // checking is actually the last region in the table.
+    //todo 获取region的endKey
     byte[] endKey = possibleRegion.getRegionLocation().getRegion().getEndKey();
     // Here we do direct Bytes.compareTo and not doing CellComparator/MetaCellComparator path.
     // MetaCellComparator is for comparing against data in META table which need special handling.
@@ -97,6 +113,7 @@ public class MetaCache {
     // 2. Even if META region comes in, its end key will be empty byte[] and so Bytes.equals(endKey,
     // HConstants.EMPTY_END_ROW) check itself will pass.
     if (
+      //todo 校验判断endKey > row
       Bytes.equals(endKey, HConstants.EMPTY_END_ROW)
         || Bytes.compareTo(endKey, 0, endKey.length, row, 0, row.length) > 0
     ) {
@@ -158,8 +175,10 @@ public class MetaCache {
    * @param locations the new locations
    */
   public void cacheLocation(final TableName tableName, final RegionLocations locations) {
+    // TODO 注释： 获取第一个不为空的 Region 的 startKey
     byte[] startKey = locations.getRegionLocation().getRegion().getStartKey();
     ConcurrentMap<byte[], RegionLocations> tableLocations = getTableLocations(tableName);
+    // TODO 注释： 更新 map
     RegionLocations oldLocation = tableLocations.putIfAbsent(startKey, locations);
     boolean isNewCacheEntry = (oldLocation == null);
     if (isNewCacheEntry) {
@@ -173,11 +192,14 @@ public class MetaCache {
     // merge old and new locations and add it to the cache
     // Meta record might be stale - some (probably the same) server has closed the region
     // with later seqNum and told us about the new location.
+    // TODO 注释： 新老合并
     RegionLocations mergedLocation = oldLocation.mergeLocations(locations);
+    // TODO 注释： 新的覆盖
     boolean replaced = tableLocations.replace(startKey, oldLocation, mergedLocation);
     if (replaced && LOG.isTraceEnabled()) {
       LOG.trace("Merged cached locations: " + mergedLocation);
     }
+    // TODO 注释： 加入缓存（将 RegionServer 的 ServerName 缓存起来）
     addToCachedServers(locations);
   }
 

@@ -244,6 +244,7 @@ public abstract class ClientScanner extends AbstractClientScanner {
     // clear the current region, we will set a new value to it after the first call of the new
     // callable.
     this.currentRegion = null;
+    //todo 构建ScannerCallableWithReplicas
     this.callable =
       new ScannerCallableWithReplicas(getTable(), getConnection(), createScannerCallable(), pool,
         primaryOperationTimeout, scan, getRetries(), scannerTimeout, caching, conf, caller);
@@ -263,6 +264,7 @@ public abstract class ClientScanner extends AbstractClientScanner {
     }
     // callWithoutRetries is at this layer. Within the ScannerCallableWithReplicas,
     // we do a callWithRetries
+    //todo
     Result[] rrs = caller.callWithoutRetries(callable, scannerTimeout);
     if (currentRegion == null && updateCurrentRegion) {
       currentRegion = callable.getHRegionInfo();
@@ -406,6 +408,9 @@ public abstract class ClientScanner extends AbstractClientScanner {
   /**
    * Contact the servers to load more {@link Result}s in the cache.
    */
+  // TODO 注释： 如果没从缓存中拿到，则加载数据到缓存队列
+  //  第一个动作：发送 RPC 请求获取都一批次数据
+  //  第二个动作：将上一次 RPC 请求拉取到的一批次数据，加入cache 中
   protected void loadCache() throws IOException {
     // check if scanner was closed during previous prefetch
     if (closed) {
@@ -414,6 +419,7 @@ public abstract class ClientScanner extends AbstractClientScanner {
     long remainingResultSize = maxScannerResultSize;
     int countdown = this.caching;
     // This is possible if we just stopped at the boundary of a region in the previous call.
+    //todo 创建下一个regionscanner
     if (callable == null && !moveToNextRegion()) {
       closed = true;
       return;
@@ -432,6 +438,7 @@ public abstract class ClientScanner extends AbstractClientScanner {
         // exhausted current region.
         // now we will also fetch data when openScanner, so do not make a next call again if values
         // is already non-null.
+        //todo 发送 RPC 请求获取一组数据回来
         values = call(callable, caller, scannerTimeout, true);
         // When the replica switch happens, we need to do certain operations again.
         // The callable will openScanner with the right startkey but we need to pick up

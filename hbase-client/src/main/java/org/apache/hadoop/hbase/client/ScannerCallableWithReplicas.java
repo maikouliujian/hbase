@@ -133,6 +133,8 @@ class ScannerCallableWithReplicas implements RetryingCallable<Result[]> {
       if (LOG.isTraceEnabled()) {
         LOG.trace("Closing scanner id=" + currentScannerCallable.scannerId);
       }
+      //todo 发送请求到meta region所在的region server
+      //todo currentScannerCallable = ScannerCallable
       Result[] r = currentScannerCallable.call(timeout);
       currentScannerCallable = null;
       return r;

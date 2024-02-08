@@ -69,7 +69,7 @@ public class IncreasingToUpperBoundRegionSplitPolicy extends ConstantSizeRegionS
         TableDescriptorBuilder.DEFAULT_MEMSTORE_FLUSH_SIZE);
     }
   }
-
+  //todo
   @Override
   protected boolean shouldSplit() {
     if (!canSplit()) {
@@ -78,6 +78,7 @@ public class IncreasingToUpperBoundRegionSplitPolicy extends ConstantSizeRegionS
     // Get count of regions that have the same common table as this.region
     int tableRegionsCount = getCountOfCommonTableRegions();
     // Get size to check
+    //todo 计算大小
     long sizeToCheck = getSizeToCheck(tableRegionsCount);
     boolean shouldSplit = isExceedSize(sizeToCheck);
     if (shouldSplit) {

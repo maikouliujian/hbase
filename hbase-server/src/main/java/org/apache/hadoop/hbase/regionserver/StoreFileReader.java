@@ -439,6 +439,7 @@ public class StoreFileReader {
    * @return true if there is overlap, false otherwise
    */
   public boolean passesKeyRangeFilter(Scan scan) {
+    //todo 当前storefile的firstKeyKV 和 lastKeyKV
     Optional<Cell> firstKeyKV = this.getFirstKey();
     Optional<Cell> lastKeyKV = this.getLastKey();
     if (!firstKeyKV.isPresent() || !lastKeyKV.isPresent()) {
@@ -451,8 +452,10 @@ public class StoreFileReader {
     ) {
       return true;
     }
+    //todo scan范围的最小和最大
     byte[] smallestScanRow = scan.isReversed() ? scan.getStopRow() : scan.getStartRow();
     byte[] largestScanRow = scan.isReversed() ? scan.getStartRow() : scan.getStopRow();
+    //todo 判断是否有重叠
     boolean nonOverLapping =
       (getComparator().compareRows(firstKeyKV.get(), largestScanRow, 0, largestScanRow.length) > 0
         && !Bytes.equals(scan.isReversed() ? scan.getStartRow() : scan.getStopRow(),

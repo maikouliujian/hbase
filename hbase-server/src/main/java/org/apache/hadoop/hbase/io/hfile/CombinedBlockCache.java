@@ -32,7 +32,9 @@ import org.apache.yetus.audience.InterfaceAudience;
  */
 @InterfaceAudience.Private
 public class CombinedBlockCache implements ResizableBlockCache, HeapSize {
+  //todo 一级缓存 LRUBlockCache，存储元数据
   protected final FirstLevelBlockCache l1Cache;
+  //todo 二级缓存 BucketCache，存储主数据
   protected final BlockCache l2Cache;
   protected final CombinedCacheStats combinedCacheStats;
 
@@ -60,6 +62,7 @@ public class CombinedBlockCache implements ResizableBlockCache, HeapSize {
   public void cacheBlock(BlockCacheKey cacheKey, Cacheable buf, boolean inMemory,
     boolean waitWhenCache) {
     boolean metaBlock = buf.getBlockType().getCategory() != BlockType.BlockCategory.DATA;
+    //todo 元数据进入一级缓存
     if (metaBlock) {
       l1Cache.cacheBlock(cacheKey, buf, inMemory);
     } else {

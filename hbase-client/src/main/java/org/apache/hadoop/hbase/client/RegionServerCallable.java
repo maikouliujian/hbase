@@ -121,6 +121,13 @@ public abstract class RegionServerCallable<T, S> implements RetryingCallable<T> 
           hrc.setCallTimeout(callTimeout);
         }
       }
+      /*************************************************
+       * TODO 马中华 https://blog.csdn.net/zhongqi2513
+       *  注释： 真正发送 RPC 请求
+       *  1、对于 table.put(List<Put> puts)写入数据来说，就是： MultiServerCallable
+       *  2、对于 table.put(Put put) 写入数据来说，就是：put 方法中的 rpcCall 匿名实现
+       */
+      //todo ScannerCallable
       return rpcCall();
     } catch (Exception e) {
       throw ProtobufUtil.handleRemoteException(e);
