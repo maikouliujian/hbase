@@ -1250,6 +1250,7 @@ public class HStore
         + storeSize + "," + storeEngine.getStoreFileManager().getStorefileCount() + "]";
       LOG.trace(traceMessage);
     }
+    //todo 判断是否compaction
     return needsCompaction();
   }
 
@@ -1474,6 +1475,7 @@ public class HStore
       // block below
       long compactionStartTime = EnvironmentEdgeManager.currentTime();
       assert compaction.hasSelection();
+      //todo 参与compact的hfiles
       Collection<HStoreFile> filesToCompact = cr.getFiles();
       assert !filesToCompact.isEmpty();
       synchronized (filesCompacting) {
@@ -1486,7 +1488,7 @@ public class HStore
       LOG.info("Starting compaction of " + filesToCompact + " into tmpdir="
         + getRegionFileSystem().getTempDir() + ", totalSize="
         + TraditionalBinaryPrefix.long2String(cr.getSize(), "", 1));
-
+      //todo compact！！！！！！
       return doCompaction(cr, filesToCompact, user, compactionStartTime,
         compaction.compact(throughputController, user));
     } finally {
@@ -2402,7 +2404,7 @@ public class HStore
       tempFiles =
         HStore.this.flushCache(cacheFlushSeqNum, snapshot, status, throughputController, tracker);
     }
-
+    //todo tempFiles是performFlush的结果
     @Override
     public boolean commit(MonitoredTask status) throws IOException {
       if (CollectionUtils.isEmpty(this.tempFiles)) {
@@ -2411,6 +2413,7 @@ public class HStore
       List<HStoreFile> storeFiles = new ArrayList<>(this.tempFiles.size());
       for (Path storeFilePath : tempFiles) {
         try {
+          //todo 将临时文件变为正式文件
           HStoreFile sf = HStore.this.commitFile(storeFilePath, cacheFlushSeqNum, status);
           outputFileSize += sf.getReader().length();
           storeFiles.add(sf);
@@ -2507,6 +2510,7 @@ public class HStore
     synchronized (filesCompacting) {
       filesCompactingClone = Lists.newArrayList(filesCompacting);
     }
+    //todo
     return this.storeEngine.needsCompaction(filesCompactingClone);
   }
 

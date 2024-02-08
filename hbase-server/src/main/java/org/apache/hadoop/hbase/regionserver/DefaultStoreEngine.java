@@ -56,6 +56,7 @@ public class DefaultStoreEngine extends StoreEngine<DefaultStoreFlusher, RatioBa
 
   @Override
   public boolean needsCompaction(List<HStoreFile> filesCompacting) {
+    //todo
     return compactionPolicy.needsCompaction(this.storeFileManager.getStorefiles(), filesCompacting);
   }
 

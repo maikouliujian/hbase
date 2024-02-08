@@ -1008,6 +1008,7 @@ public class AssignmentManager {
           final RegionInfo parent = ProtobufUtil.toRegionInfo(transition.getRegionInfo(0));
           final RegionInfo splitA = ProtobufUtil.toRegionInfo(transition.getRegionInfo(1));
           final RegionInfo splitB = ProtobufUtil.toRegionInfo(transition.getRegionInfo(2));
+          //todo 向hmaster提交split
           updateRegionSplitTransition(serverName, transition.getTransitionCode(), parent, splitA,
             splitB);
           break;
@@ -1155,6 +1156,7 @@ public class AssignmentManager {
     // initialization and report failure with WARN level logging.
     RegionState parentState = regionStates.getRegionState(parent);
     if (parentState != null && parentState.isOpened()) {
+      //todo 提交SplitProcedure：SplitTableRegionProcedure
       master.getMasterProcedureExecutor().submitProcedure(createSplitProcedure(parent, splitKey));
     } else {
       LOG.info("Ignoring split request from " + serverName + ", parent=" + parent

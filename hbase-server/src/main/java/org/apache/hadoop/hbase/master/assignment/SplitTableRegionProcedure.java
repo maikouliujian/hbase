@@ -275,7 +275,7 @@ public class SplitTableRegionProcedure
     // here
     AssignmentManagerUtil.checkClosedRegion(env, getParentRegion());
   }
-
+  //todo 执行此方法！！！！！！共11个步骤
   @Override
   protected Flow executeFromState(MasterProcedureEnv env, SplitTableRegionState state)
     throws InterruptedException {

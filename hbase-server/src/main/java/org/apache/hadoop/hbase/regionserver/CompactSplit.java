@@ -320,6 +320,7 @@ public class CompactSplit implements CompactionRequester, PropagatingConfigurati
     CompactionCompleteTracker completeTracker, User user) throws IOException {
     // request compaction on all stores
     for (HStore store : region.stores.values()) {
+      //todo compact是store级别进行的
       requestCompactionInternal(region, store, why, priority, selectNow, tracker, completeTracker,
         user);
     }
@@ -357,6 +358,7 @@ public class CompactSplit implements CompactionRequester, PropagatingConfigurati
     }
 
     CompactionContext compaction;
+    //todo 挑选合适的hfile文件进行compact，存放到CompactionContext中
     if (selectNow) {
       Optional<CompactionContext> c =
         selectCompaction(region, store, priority, tracker, completeTracker, user);
@@ -381,6 +383,7 @@ public class CompactSplit implements CompactionRequester, PropagatingConfigurati
       // pool; we will do selection there, and move to large pool if necessary.
       pool = shortCompactions;
     }
+    //todo 执行compact！！！！！！
     pool.execute(
       new CompactionRunner(store, region, compaction, tracker, completeTracker, pool, user));
     region.incrementCompactionsQueuedCount();
@@ -390,7 +393,7 @@ public class CompactSplit implements CompactionRequester, PropagatingConfigurati
         + (why != null && !why.isEmpty() ? "; Because: " + why : "") + "; " + this);
     }
   }
-
+  //todo compact的入口！！！！！！
   public synchronized void requestSystemCompaction(HRegion region, String why) throws IOException {
     requestCompactionInternal(region, why, NO_PRIORITY, false, CompactionLifeCycleTracker.DUMMY,
       DUMMY_COMPLETE_TRACKER, null);
@@ -540,6 +543,7 @@ public class CompactSplit implements CompactionRequester, PropagatingConfigurati
   private final class CompactionRunner implements Runnable {
     private final HStore store;
     private final HRegion region;
+    //todo 重点变量
     private final CompactionContext compaction;
     private final CompactionLifeCycleTracker tracker;
     private final CompactionCompleteTracker completeTracker;
@@ -587,6 +591,7 @@ public class CompactSplit implements CompactionRequester, PropagatingConfigurati
         }
         Optional<CompactionContext> selected;
         try {
+          //todo
           selected = selectCompaction(this.region, this.store, queuedPriority, tracker,
             completeTracker, user);
         } catch (IOException ex) {
@@ -626,6 +631,7 @@ public class CompactSplit implements CompactionRequester, PropagatingConfigurati
         // Note: please don't put single-compaction logic here;
         // put it into region/store/etc. This is CST logic.
         long start = EnvironmentEdgeManager.currentTime();
+        //todo 执行compact的逻辑！！！！！！
         boolean completed = region.compact(c, store, compactionThroughputController, user);
         long now = EnvironmentEdgeManager.currentTime();
         LOG.info(((completed) ? "Completed" : "Aborted") + " compaction " + this + "; duration="
@@ -674,6 +680,7 @@ public class CompactSplit implements CompactionRequester, PropagatingConfigurati
         region.decrementCompactionsQueuedCount();
         return;
       }
+      //todo
       doCompaction(user);
     }
 

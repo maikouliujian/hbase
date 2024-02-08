@@ -2279,6 +2279,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
           // We no longer need to cancel the request on the way out of this
           // method because Store#compact will clean up unconditionally
           requestNeedsCancellation = false;
+          //todo 执行compact！！！！！！
           store.compact(compaction, throughputController, user);
         } catch (InterruptedIOException iioe) {
           String msg = "region " + this + " compaction interrupted";
@@ -2868,6 +2869,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
         StoreFlushContext sfc = flushEntry.getValue();
         //todo 真正commit，将.tmp下的文件移动到各自的cf目录下
         boolean needsCompaction = sfc.commit(status);
+        //todo 是否执行Compaction
         if (needsCompaction) {
           compactionRequested = true;
         }

@@ -87,6 +87,7 @@ public class FIFOCompactionPolicy extends ExploringCompactionPolicy {
       LOG.info("Split detected, delegate to the parent policy.");
       return super.needsCompaction(storeFiles, filesCompacting);
     }
+    //todo
     return hasExpiredStores(storeFiles);
   }
 

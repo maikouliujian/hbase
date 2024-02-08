@@ -595,6 +595,7 @@ class MemStoreFlusher implements FlushRequester {
       notifyFlushRequest(region, emergencyFlush);
       //todo 执行flush，执行flush结束后，必然多了一个hfile格式的文件
       FlushResult flushResult = region.flushcache(families, false, tracker);
+      //TODO 是否可以执行compact
       boolean shouldCompact = flushResult.isCompactionNeeded();
       // We just want to check the size
       boolean shouldSplit = region.checkSplit().isPresent();
